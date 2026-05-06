@@ -42,62 +42,20 @@ function sendFinalScore({ score, difficulty } = {}) {
 }
 
 // ================================================
-// DIFICULDADE — 3 NÍVEIS PADRONIZADOS: Fácil | Médio | Difícil
+// DIFICULDADE — fixada em 'Médio' (seletor removido)
 // ================================================
-const DIFFICULTY_LEVELS = ['Fácil', 'Médio', 'Difícil'];
-let currentDifficulty = 'Médio';
+const currentDifficulty = 'Médio';
 
 function getPlatformDifficulty() {
-  // Tenta ler da plataforma; senão usa o selecionado pelo jogador
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const d = params.get('difficulty');
-    if (d && DIFFICULTY_LEVELS.includes(d)) return d;
-  } catch (_) {}
   return currentDifficulty;
 }
 
 function applyDifficulty() {
-  // Fácil: blocos em ordem; Médio: embaralhados; Difícil: sem dica disponível + más penalidades exibidas
-  const ph = phases[currentPhase];
-  if (!ph) return;
-  const listEl = document.getElementById('blockList');
-  if (!listEl) return;
-
-  if (currentDifficulty === 'Fácil') {
-    // Blocos em ordem — já montados pelo buildBlocks, reordena no DOM
-    const cards = [...listEl.querySelectorAll('.block-card')];
-    cards.sort((a, b) => {
-      const ai = ph.sequence.indexOf(a.id.replace('blk_', ''));
-      const bi = ph.sequence.indexOf(b.id.replace('blk_', ''));
-      return ai - bi;
-    });
-    cards.forEach(c => listEl.appendChild(c));
-  }
-
-  const hintBtn = document.querySelector('.btn-hint');
-  if (hintBtn) {
-    hintBtn.disabled = currentDifficulty === 'Difícil';
-    hintBtn.title = currentDifficulty === 'Difícil' ? 'Dicas desativadas no modo Difícil' : '';
-    hintBtn.setAttribute('aria-disabled', currentDifficulty === 'Difícil' ? 'true' : 'false');
-  }
+  // Blocos já embaralhados pelo buildBlocks — nada extra a fazer no modo único
 }
 
 function buildDifficultyUI() {
-  const sel = document.getElementById('difficultySelect');
-  if (!sel) return;
-  sel.innerHTML = '';
-  DIFFICULTY_LEVELS.forEach(lv => {
-    const opt = document.createElement('option');
-    opt.value = lv;
-    opt.textContent = lv;
-    if (lv === currentDifficulty) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  sel.addEventListener('change', () => {
-    currentDifficulty = sel.value;
-    resetPhase();
-  });
+  // Seletor de dificuldade removido da interface
 }
 
 // ================================================
@@ -120,7 +78,16 @@ function toggleMute() {
 function setVolume(val) {
   audioVolume = Math.max(0, Math.min(1, parseFloat(val)));
   const slider = document.getElementById('volumeSlider');
-  if (slider) slider.value = audioVolume;
+  if (slider) {
+    slider.value = audioVolume;
+    slider.setAttribute('aria-valuenow', audioVolume);
+  }
+  // Se há fala em andamento, cancela e re-aplica o volume (a Web Speech API
+  // não permite alterar o volume de um utterance já em curso, por isso
+  // a próxima chamada a say() já usará o novo audioVolume automaticamente)
+  if (window.speechSynthesis && window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+  }
 }
 
 // ================================================
@@ -153,6 +120,40 @@ function cycleFontSize() {
   }
 }
 
+// ================================================
+// MODO DALTÔNICO
+// ================================================
+let colorblindMode = 'none'; // 'none' | 'deuteranopia' | 'protanopia' | 'tritanopia'
+
+const colorblindModes = {
+  none:         { label: '👁️ Daltonismo: Desativado', className: '' },
+  deuteranopia: { label: '🟡 Deuteranopia (Verde-Vermelho)', className: 'cb-deuteranopia' },
+  protanopia:   { label: '🔵 Protanopia (Vermelho)', className: 'cb-protanopia' },
+  tritanopia:   { label: '🟣 Tritanopia (Azul-Amarelo)', className: 'cb-tritanopia' }
+};
+
+function cycleColorblindMode() {
+  const keys = Object.keys(colorblindModes);
+  const next = keys[(keys.indexOf(colorblindMode) + 1) % keys.length];
+
+  // Remove classe anterior
+  if (colorblindModes[colorblindMode].className)
+    document.body.classList.remove(colorblindModes[colorblindMode].className);
+
+  colorblindMode = next;
+
+  // Aplica nova classe
+  if (colorblindModes[colorblindMode].className)
+    document.body.classList.add(colorblindModes[colorblindMode].className);
+
+  const btn = document.getElementById('btnColorblind');
+  if (btn) {
+    btn.textContent = colorblindModes[colorblindMode].label;
+    btn.setAttribute('aria-label', 'Modo daltônico: ' + colorblindModes[colorblindMode].label);
+    btn.setAttribute('aria-pressed', colorblindMode !== 'none' ? 'true' : 'false');
+  }
+}
+
 function toggleA11yPanel() {
   const panel = document.getElementById('a11yPanel');
   if (!panel) return;
@@ -164,6 +165,7 @@ function toggleA11yPanel() {
     if (firstFocusable) firstFocusable.focus();
   }
 }
+
 
 // ================================================
 // ATALHOS DE TECLADO (documentados via aria-keyshortcuts)
@@ -177,7 +179,7 @@ document.addEventListener('keydown', (e) => {
       if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); checkAnswer(); }
       break;
     case 'd': case 'D':
-      if (!e.ctrlKey && !e.metaKey && currentDifficulty !== 'Difícil') { e.preventDefault(); showHint(); }
+      if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); showHint(); }
       break;
     case 'r': case 'R':
       if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); resetPhase(); }
@@ -204,10 +206,11 @@ document.addEventListener('keydown', (e) => {
 // ESTADO DO JOGO
 // ================================================
 let currentPhase   = 0;
+let currentSubphase = 0;
 let slots          = [];
 let score          = 0;
-let phaseScores    = [];
-let phaseStars     = [];
+let subphaseScores = {};
+let subphaseStars  = {};
 let dragItem       = null;
 let hintCount      = 0;
 let errorCount     = 0;
@@ -220,15 +223,37 @@ const sayings = {
   wrong:   ['Quase! Tenta de novo! 💪','Não foi dessa vez! Você consegue! 🙂','Pense bem... qual vem primeiro? 🤔']
 };
 
+function getCurrentSubphase() {
+  return phases[currentPhase].subphases[currentSubphase];
+}
+
+function getProgressKey(phaseIndex = currentPhase, subphaseIndex = currentSubphase) {
+  return `${phaseIndex}-${subphaseIndex}`;
+}
+
+function getPhaseScore(phaseIndex) {
+  const prefix = `${phaseIndex}-`;
+  return Object.keys(subphaseScores)
+    .filter(key => key.startsWith(prefix))
+    .reduce((sum, key) => sum + subphaseScores[key], 0);
+}
+
+function getPhaseStars(phaseIndex) {
+  const prefix = `${phaseIndex}-`;
+  return Object.keys(subphaseStars)
+    .filter(key => key.startsWith(prefix))
+    .reduce((max, key) => Math.max(max, subphaseStars[key]), 0);
+}
+
 // ================================================
 // PONTUAÇÃO — escala 0-100 conforme manual
 // ================================================
-function calcScore(ph, slots, errCnt, hadErr, elapsedMs) {
-  const total   = ph.sequence.length;
-  const correct = ph.sequence.filter((id, i) => slots[i] === id).length;
+function calcScore(sub, slots, errCnt, hadErr, elapsedMs) {
+  const total   = sub.sequence.length;
+  const correct = sub.sequence.filter((id, i) => slots[i] === id).length;
   const ratio   = correct / total;
 
-  // Pontuação base por fase: máx 20 pts por fase × 5 fases = 100 total
+  // Pontuação base por subfase: máx 20 pts + 10 bônus.
   let base = 0, stars = 0;
   if (correct === total)  { base = 20; stars = 4; }
   else if (ratio >= 0.67) { base = 15; stars = 3; }
@@ -255,8 +280,9 @@ function calcScore(ph, slots, errCnt, hadErr, elapsedMs) {
 
 // Converte pontuação interna para escala 0-100
 function calcFinalScore100() {
-  const totalPossible = phases.length * 30; // máx por fase: 20 base + 10 bônus
-  const raw = phaseScores.reduce((a, b) => a + b, 0);
+  const totalSubphases = phases.reduce((sum, phase) => sum + phase.subphases.length, 0);
+  const totalPossible = totalSubphases * 30;
+  const raw = Object.values(subphaseScores).reduce((a, b) => a + b, 0);
   return Math.min(100, Math.max(0, Math.round((raw / totalPossible) * 100)));
 }
 
@@ -268,7 +294,7 @@ function updateHeaderStars() {
   if (!row) return;
   row.innerHTML = '';
   phases.forEach((ph, i) => {
-    const pts  = phaseScores[i] || 0;
+    const pts  = getPhaseScore(i);
     const span = document.createElement('span');
     span.className = 'phase-score-pill' + (pts > 0 ? ' earned' : '');
     span.textContent = ph.icon + ' ' + (pts > 0 ? '+' + pts : '–');
@@ -279,10 +305,10 @@ function updateHeaderStars() {
 // ================================================
 // ANIMAÇÃO DE HISTÓRIA — slideshow das imagens da sequência
 // ================================================
-function playStoryAnimation(ph, onDone) {
+function playStoryAnimation(sub, onDone) {
   // Filtra apenas blocos que têm imagem, na ordem correta da sequência
-  const storyBlocks = ph.sequence
-    .map(id => ph.blocks.find(b => b.id === id))
+  const storyBlocks = sub.sequence
+    .map(id => sub.blocks.find(b => b.id === id))
     .filter(b => b && b.img);
 
   // Se não há imagens suficientes, pula a animação
@@ -390,7 +416,7 @@ function playStoryAnimation(ph, onDone) {
 // ================================================
 // TELA DE CONCLUSÃO DE FASE
 // ================================================
-function showPhaseComplete(result, ph, isLastPhase) {
+function showPhaseComplete(result, ph, sub, isLastSubphase, isLastPhase) {
   const overlay = document.getElementById('phaseCompleteOverlay');
   const icon    = document.getElementById('pcPhaseIcon');
   const title   = document.getElementById('pcTitle');
@@ -400,7 +426,7 @@ function showPhaseComplete(result, ph, isLastPhase) {
   const btnNext = document.getElementById('pcBtnNext');
 
   icon.textContent  = ph.icon;
-  title.textContent = 'Fase ' + ph.id + ' Concluída!';
+  title.textContent = 'Fase ' + ph.id + '.' + sub.id + ' Concluída!';
 
   starsW.innerHTML = '';
   for (let i = 0; i < MAX_STARS_PER_PHASE; i++) {
@@ -434,15 +460,10 @@ function showPhaseComplete(result, ph, isLastPhase) {
   }
 
   if (isLastPhase) {
-    const finalScore100 = calcFinalScore100();
     btnNext.textContent = '🏆 Ver Resultado Final!';
     btnNext.className   = 'pc-btn-next game-done';
-    // Envia score ao finalizar jogo
-    setTimeout(() => {
-      sendFinalScore({ score: finalScore100, difficulty: getPlatformDifficulty() });
-    }, 800);
   } else {
-    btnNext.textContent = 'Próxima Fase ➡️';
+    btnNext.textContent = isLastSubphase ? 'Próxima Fase ➡️' : 'Próxima Subfase ➡️';
     btnNext.className   = 'pc-btn-next';
   }
 
@@ -462,19 +483,35 @@ function addDetailRow(container, type, emoji, label, value) {
 function advancePhase() {
   const overlay = document.getElementById('phaseCompleteOverlay');
   overlay.classList.remove('visible');
-  if (currentPhase < phases.length - 1) {
-    currentPhase++;
+
+  const isLastSubphase = currentSubphase >= phases[currentPhase].subphases.length - 1;
+  const isLastPhase = currentPhase >= phases.length - 1;
+
+  if (!isLastSubphase) {
+    currentSubphase++;
     initPhase();
     setTimeout(() => {
       const firstBlock = document.querySelector('#blockList .block-card:not(.used)');
       if (firstBlock) firstBlock.focus();
     }, 600);
-  } else {
-    const finalScore100 = calcFinalScore100();
-    showToast('🏆 Jogo concluído! Pontuação final: ' + finalScore100 + '/100', 'ok');
-    say('Parabéns! Você é incrível! Completou todas as missões com ' + finalScore100 + ' pontos!', 0.8);
-    sendFinalScore({ score: finalScore100, difficulty: getPlatformDifficulty() });
+    return;
   }
+
+  if (!isLastPhase) {
+    currentPhase++;
+    currentSubphase = 0;
+    initPhase();
+    setTimeout(() => {
+      const firstBlock = document.querySelector('#blockList .block-card:not(.used)');
+      if (firstBlock) firstBlock.focus();
+    }, 600);
+    return;
+  }
+
+  const finalScore100 = calcFinalScore100();
+  showToast('🏆 Jogo concluído! Pontuação final: ' + finalScore100 + '/100', 'ok');
+  say('Parabéns! Você completou todas as missões com ' + finalScore100 + ' pontos!', 0.8);
+  sendFinalScore({ score: finalScore100, difficulty: getPlatformDifficulty() });
 }
 
 // ================================================
@@ -525,22 +562,76 @@ function say(text, speed = 0.9) {
 function speakMission() {
   const btn = document.getElementById('speakMissionBtn');
   if (btn) btn.classList.add('speaking');
-  const u = say(phases[currentPhase].mission, 0.85);
+  const u = say(getCurrentSubphase().mission, 0.85);
   if (u) u.onend = () => { if (btn) btn.classList.remove('speaking'); };
   else if (btn) btn.classList.remove('speaking');
 }
 
 function speakSequence() {
-  const ph     = phases[currentPhase];
+  const sub    = getCurrentSubphase();
   const filled = slots.filter(s => s !== null);
   if (!filled.length) { say('Adicione os blocos primeiro!'); return; }
-  const names = slots.map((s, i) => s ? `${i + 1}. ${ph.blocks.find(b => b.id === s).name}` : '').filter(Boolean);
+  const names = slots.map((s, i) => s ? `${i + 1}. ${sub.blocks.find(b => b.id === s).name}` : '').filter(Boolean);
   say('A sequência até agora é: ' + names.join(', '), 0.8);
 }
 
 // ================================================
 // FEEDBACK VISUAL
 // ================================================
+
+/*
+ * SPRITES DE FEEDBACK DO PERSONAGEM
+ * ------------------------------------------------------------------
+ * Substitua os valores abaixo pelos caminhos reais das suas imagens.
+ * As três variáveis correspondem aos três estados de feedback:
+ *
+ *   FEEDBACK_IMG_NEUTRAL  — personagem neutro / aguardando
+ *   FEEDBACK_IMG_GOOD     — personagem feliz / acerto parcial
+ *   FEEDBACK_IMG_GREAT    — personagem muito feliz / acerto total / perfeito
+ *
+ * Exemplo:
+ *   const FEEDBACK_IMG_NEUTRAL = 'assets/img/char_neutro.png';
+ *   const FEEDBACK_IMG_GOOD    = 'assets/img/char_bom.png';
+ *   const FEEDBACK_IMG_GREAT   = 'assets/img/char_muitobom.png';
+ * ------------------------------------------------------------------
+ */
+const FEEDBACK_IMG_NEUTRAL = ''; // TODO: adicione o caminho da imagem neutra
+const FEEDBACK_IMG_GOOD    = ''; // TODO: adicione o caminho da imagem de feedback bom
+const FEEDBACK_IMG_GREAT   = ''; // TODO: adicione o caminho da imagem de feedback muito bom
+
+/**
+ * Atualiza a imagem do personagem conforme o nível de feedback.
+ * @param {'neutral'|'good'|'great'} level
+ */
+function setCharFeedbackImage(level) {
+  const charEl = document.querySelector('.char');
+  if (!charEl) return;
+
+  const map = {
+    neutral: FEEDBACK_IMG_NEUTRAL,
+    good:    FEEDBACK_IMG_GOOD,
+    great:   FEEDBACK_IMG_GREAT
+  };
+  const src = map[level] || '';
+
+  if (src) {
+    // Se há imagem definida, substitui o emoji por <img>
+    charEl.innerHTML = `<img src="${src}" alt="Personagem ${level}" class="char-feedback-img" />`;
+  } else {
+    // Sem imagem ainda: mantém o emoji padrão
+    if (!charEl.querySelector('img')) charEl.textContent = '🧒';
+  }
+}
+
+/**
+ * Reseta o personagem para o estado neutro.
+ * Chamado no início de cada fase.
+ */
+function resetCharImage() {
+  setCharFeedbackImage('neutral');
+  const charEl = document.querySelector('.char');
+  if (charEl && !FEEDBACK_IMG_NEUTRAL) charEl.textContent = '🧒';
+}
 function showToast(msg, type = 'ok') {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -561,20 +652,23 @@ function buildPhaseNav() {
   nav.innerHTML = '';
   phases.forEach((ph, i) => {
     const btn = document.createElement('button');
+    const phaseScore = getPhaseScore(i);
+    const phaseStars = getPhaseStars(i);
     let cls = 'phase-btn';
     if (i === currentPhase)      cls += ' active';
-    else if (phaseScores[i] > 0) cls += ' done';
+    else if (phaseScore > 0) cls += ' done';
     else if (i > currentPhase)   cls += ' locked';
     btn.className = cls;
-    const starsHtml = phaseStars[i] > 0
-      ? ' <span class="phase-star-count">' + '⭐'.repeat(phaseStars[i]) + '</span>'
+    const starsHtml = phaseStars > 0
+      ? ' <span class="phase-star-count">' + '⭐'.repeat(phaseStars) + '</span>'
       : '';
-    btn.innerHTML = ph.icon + ' Fase ' + ph.id + starsHtml;
-    if (phaseScores[i] > 0) btn.title = phaseScores[i] + ' pts';
-    btn.setAttribute('aria-label', 'Fase ' + ph.id + ': ' + ph.title + (phaseScores[i] > 0 ? ', ' + phaseScores[i] + ' pontos' : ''));
+    const activeProgress = i === currentPhase ? ' • ' + (currentSubphase + 1) + '/' + ph.subphases.length : '';
+    btn.innerHTML = ph.icon + ' Fase ' + ph.id + activeProgress + starsHtml;
+    if (phaseScore > 0) btn.title = phaseScore + ' pts';
+    btn.setAttribute('aria-label', 'Fase ' + ph.id + ': ' + ph.title + (phaseScore > 0 ? ', ' + phaseScore + ' pontos' : ''));
     btn.setAttribute('aria-current', i === currentPhase ? 'true' : 'false');
     btn.onclick = () => {
-      if (i <= currentPhase || phaseScores[i] > 0) { currentPhase = i; initPhase(); }
+      if (i <= currentPhase || phaseScore > 0) { currentPhase = i; currentSubphase = 0; initPhase(); }
     };
     nav.appendChild(btn);
   });
@@ -585,15 +679,16 @@ function buildPhaseNav() {
 // ================================================
 function initPhase() {
   const ph       = phases[currentPhase];
-  slots          = new Array(ph.sequence.length).fill(null);
+  const sub      = getCurrentSubphase();
+  slots          = new Array(sub.sequence.length).fill(null);
   hintCount      = 0;
   errorCount     = 0;
   hadError       = false;
   phaseStartTime = Date.now();
 
   document.getElementById('missionIcon').textContent        = ph.icon;
-  document.getElementById('missionTitle').textContent       = `Fase ${ph.id} — ${ph.title}`;
-  document.getElementById('missionDesc').textContent        = ph.desc;
+  document.getElementById('missionTitle').textContent       = `Fase ${ph.id} — ${ph.title} — Subfase ${sub.id}: ${sub.title}`;
+  document.getElementById('missionDesc').textContent        = sub.desc;
   document.getElementById('missionHeader').style.background = ph.bg;
   document.getElementById('progressFill').style.background  = ph.pbColor;
 
@@ -603,6 +698,7 @@ function initPhase() {
   buildSlots();
   updateHeaderStars();
   setChar('Vamos lá!');
+  resetCharImage();
   applyDifficulty();
   setTimeout(() => speakMission(), 500);
 }
@@ -611,10 +707,10 @@ function initPhase() {
 // CONSTRUIR BLOCOS
 // ================================================
 function buildBlocks() {
-  const ph   = phases[currentPhase];
+  const sub  = getCurrentSubphase();
   const list = document.getElementById('blockList');
   list.innerHTML = '';
-  [...ph.blocks].sort(() => Math.random() - 0.5).forEach(b => {
+  [...sub.blocks].sort(() => Math.random() - 0.5).forEach(b => {
     const c = document.createElement('div');
     c.className = 'block-card' + (b.img ? ' has-img' : '');
     c.id        = 'blk_' + b.id;
@@ -649,16 +745,16 @@ function buildBlocks() {
 // CONSTRUIR SLOTS
 // ================================================
 function buildSlots() {
-  const ph   = phases[currentPhase];
+  const sub  = getCurrentSubphase();
   const zone = document.getElementById('dropZone');
   zone.innerHTML = '';
-  ph.sequence.forEach((_, i) => {
+  sub.sequence.forEach((_, i) => {
     const s = document.createElement('div');
     s.className   = 'drop-slot';
     s.dataset.idx = i;
     s.setAttribute('role', 'listitem');
     s.setAttribute('tabindex', '0');
-    s.setAttribute('aria-label', `Posição ${i + 1} de ${ph.sequence.length}, vazio`);
+    s.setAttribute('aria-label', `Posição ${i + 1} de ${sub.sequence.length}, vazio`);
     s.innerHTML = `
       <span class="slot-number" aria-hidden="true">${i + 1}</span>
       <div class="slot-content" id="sc${i}"><span style="font-size:26px;color:#ccc" aria-hidden="true">?</span></div>
@@ -679,11 +775,11 @@ function buildSlots() {
 // ADICIONAR / REMOVER BLOCO
 // ================================================
 function addToSlot(idx, blockId) {
-  const ph = phases[currentPhase];
+  const sub = getCurrentSubphase();
   if (slots[idx] !== null) removeFromSlot(idx);
   if (slots.includes(blockId)) removeFromSlot(slots.indexOf(blockId));
   slots[idx] = blockId;
-  const b = ph.blocks.find(x => x.id === blockId);
+  const b = sub.blocks.find(x => x.id === blockId);
   document.getElementById('sc' + idx).innerHTML = renderSlotContent(b);
   const blkEl = document.getElementById('blk_' + blockId);
   if (blkEl) {
@@ -693,23 +789,23 @@ function addToSlot(idx, blockId) {
     blkEl.setAttribute('tabindex', '-1');
   }
   const slotEl = document.querySelector(`.drop-slot[data-idx="${idx}"]`);
-  if (slotEl) slotEl.setAttribute('aria-label', `Posição ${idx + 1} de ${ph.sequence.length}: ${b.name} — pressione Enter para remover`);
+  if (slotEl) slotEl.setAttribute('aria-label', `Posição ${idx + 1} de ${sub.sequence.length}: ${b.name} — pressione Enter para remover`);
   say(b.name, 1.0);
   updateProgress();
   dragItem = null;
 }
 
 function removeFromSlot(idx) {
-  const ph      = phases[currentPhase];
+  const sub     = getCurrentSubphase();
   const blockId = slots[idx];
   if (!blockId) return;
-  const b = ph.blocks.find(x => x.id === blockId);
+  const b = sub.blocks.find(x => x.id === blockId);
   slots[idx] = null;
   document.getElementById('sc' + idx).innerHTML = `<span style="font-size:26px;color:#ccc" aria-hidden="true">?</span>`;
   const slotEl = document.querySelector(`.drop-slot[data-idx="${idx}"]`);
   if (slotEl) {
     slotEl.className = 'drop-slot';
-    slotEl.setAttribute('aria-label', `Posição ${idx + 1} de ${ph.sequence.length}, vazio`);
+    slotEl.setAttribute('aria-label', `Posição ${idx + 1} de ${sub.sequence.length}, vazio`);
   }
   const blkEl = document.getElementById('blk_' + blockId);
   if (blkEl) {
@@ -736,23 +832,25 @@ function updateProgress() {
 // ================================================
 function checkAnswer() {
   const ph = phases[currentPhase];
+  const sub = getCurrentSubphase();
   if (slots.includes(null)) {
     showToast('⚠️ Complete a sequência antes!', 'err');
     say('Complete todos os espaços primeiro!');
     return;
   }
 
-  const allCorrect = ph.sequence.every((id, i) => slots[i] === id);
+  const allCorrect = sub.sequence.every((id, i) => slots[i] === id);
   const slotEls    = document.querySelectorAll('.drop-slot');
   const elapsed    = Date.now() - phaseStartTime;
 
   if (allCorrect) {
     slotEls.forEach(s => { s.classList.remove('wrong'); s.classList.add('correct'); });
 
-    const result = calcScore(ph, slots, errorCount, hadError, elapsed);
-    phaseScores[currentPhase] = result.pts;
-    phaseStars[currentPhase]  = result.stars;
-    score = phaseScores.reduce((a, b) => a + b, 0);
+    const result = calcScore(sub, slots, errorCount, hadError, elapsed);
+    const progressKey = getProgressKey();
+    subphaseScores[progressKey] = result.pts;
+    subphaseStars[progressKey]  = result.stars;
+    score = Object.values(subphaseScores).reduce((a, b) => a + b, 0);
 
     document.getElementById('scoreVal').textContent = score;
     document.getElementById('scoreVal').setAttribute('aria-label', 'Pontuação total: ' + score + ' pontos');
@@ -761,12 +859,17 @@ function checkAnswer() {
 
     const msg = sayings.correct[Math.floor(Math.random() * sayings.correct.length)];
     setChar(msg);
+
+    // Feedback por imagem: perfeito (sem erro) = muito bom; com erro = bom
+    setCharFeedbackImage(hadError ? 'good' : 'great');
     say(msg + '. Você ganhou ' + result.pts + ' pontos!', 0.9);
     buildPhaseNav();
 
     setTimeout(() => {
-      playStoryAnimation(ph, () => {
-        showPhaseComplete(result, ph, currentPhase === phases.length - 1);
+      playStoryAnimation(sub, () => {
+        const isLastSubphase = currentSubphase >= ph.subphases.length - 1;
+        const isLastPhase = currentPhase >= phases.length - 1;
+        showPhaseComplete(result, ph, sub, isLastSubphase, isLastPhase && isLastSubphase);
       });
     }, 900);
 
@@ -775,15 +878,17 @@ function checkAnswer() {
     hadError = true;
     slotEls.forEach((s, i) => {
       s.classList.remove('correct', 'wrong');
-      s.classList.add(slots[i] === ph.sequence[i] ? 'correct' : 'wrong');
+      s.classList.add(slots[i] === sub.sequence[i] ? 'correct' : 'wrong');
     });
-    const wrongCount = ph.sequence.filter((id, i) => slots[i] !== id).length;
+    const wrongCount = sub.sequence.filter((id, i) => slots[i] !== id).length;
     let penaltyMsg = '';
     if (errorCount > 3)                              penaltyMsg = ' (⚠️ Muitos erros: penalidade ao final)';
-    else if (wrongCount / ph.sequence.length > 0.75) penaltyMsg = ' (⚠️ Sequência bagunçada: penalidade ao final)';
+    else if (wrongCount / sub.sequence.length > 0.75) penaltyMsg = ' (⚠️ Sequência bagunçada: penalidade ao final)';
     const msg = sayings.wrong[Math.floor(Math.random() * sayings.wrong.length)];
     showToast('❌ ' + msg + penaltyMsg, 'err');
     setChar(msg);
+    // Feedback por imagem: erro = neutro (personagem pensativo)
+    setCharFeedbackImage('neutral');
     say(msg, 0.9);
     setTimeout(() => slotEls.forEach(s => s.classList.remove('wrong', 'correct')), 1400);
   }
@@ -793,15 +898,11 @@ function checkAnswer() {
 // DICA
 // ================================================
 function showHint() {
-  if (currentDifficulty === 'Difícil') {
-    showToast('⚠️ Dicas desativadas no modo Difícil!', 'err');
-    return;
-  }
   hintCount++;
-  const ph       = phases[currentPhase];
-  const wrongIdx = ph.sequence.findIndex((id, i) => slots[i] !== id);
+  const sub      = getCurrentSubphase();
+  const wrongIdx = sub.sequence.findIndex((id, i) => slots[i] !== id);
   if (wrongIdx === -1) { say('Você está indo bem!'); return; }
-  const correct = ph.blocks.find(b => b.id === ph.sequence[wrongIdx]);
+  const correct = sub.blocks.find(b => b.id === sub.sequence[wrongIdx]);
   const hint = `Na posição ${wrongIdx + 1}, vai o bloco: ${correct.name}`;
   say(hint, 0.85);
   showToast('💡 ' + hint, 'tip');
@@ -818,7 +919,7 @@ function resetPhase() {
 // ================================================
 window.speechSynthesis && window.speechSynthesis.getVoices();
 loadPhases().then(() => {
-  phaseScores = new Array(phases.length).fill(0);
-  phaseStars  = new Array(phases.length).fill(0);
+  subphaseScores = {};
+  subphaseStars  = {};
   buildDifficultyUI();
 });
