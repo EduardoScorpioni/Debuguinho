@@ -45,6 +45,11 @@ function sendFinalScore({ score, difficulty } = {}) {
 // DIFICULDADE — 5 níveis padronizados por fase
 // ================================================
 function getPlatformDifficulty() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const difficulty = params.get('difficulty') || params.get('dificuldade');
+    if (difficulty) return difficulty;
+  } catch (_) {}
   return getCurrentDifficulty();
 }
 
@@ -224,6 +229,7 @@ let slots          = [];
 let score          = 0;
 let subphaseScores = {};
 let subphaseStars  = {};
+let phaseScores100 = {};
 let dragItem       = null;
 let hintCount      = 0;
 let errorCount     = 0;
@@ -246,9 +252,13 @@ function getProgressKey(phaseIndex = currentPhase, subphaseIndex = currentSubpha
 
 function getPhaseScore(phaseIndex) {
   const prefix = `${phaseIndex}-`;
-  return Object.keys(subphaseScores)
+  const phase = phases[phaseIndex];
+  if (!phase) return 0;
+  const completedScores = Object.keys(subphaseScores)
     .filter(key => key.startsWith(prefix))
-    .reduce((sum, key) => sum + subphaseScores[key], 0);
+    .map(key => subphaseScores[key]);
+  if (!completedScores.length) return 0;
+  return Math.round(completedScores.reduce((sum, pts) => sum + pts, 0) / phase.subphases.length);
 }
 
 function getPhaseStars(phaseIndex) {
@@ -266,36 +276,57 @@ function calcScore(sub, slots, errCnt, hadErr, elapsedMs) {
   const correct = sub.sequence.filter((id, i) => slots[i] === id).length;
   const ratio   = correct / total;
 
-  // Pontuação base por subfase: máx 20 pts + 10 bônus.
-  let base = 0, stars = 0;
-  if (correct === total)  { base = 20; stars = 4; }
-  else if (ratio >= 0.67) { base = 15; stars = 3; }
-  else if (ratio >= 0.50) { base = 10; stars = 2; }
-  else if (correct >= 1)  { base =  5; stars = 1; }
-  else                    { base =  0; stars = 0; }
+  // Pontuação base em escala 0-100. Acerto perfeito começa em 90
+  // para permitir bônus sem ultrapassar a escala padronizada.
+  const base = Math.round(ratio * 90);
+  let stars = 0;
+  if (correct === total)  stars = 4;
+  else if (ratio >= 0.75) stars = 3;
+  else if (ratio >= 0.50) stars = 2;
+  else if (correct >= 1)  stars = 1;
 
   // Penalidades por dificuldade
   const penaltyMultiplier = getDifficultyPenaltyMultiplier();
   let penalty = 0;
-  if (errCnt > 3)   penalty += Math.round(5  * penaltyMultiplier);
-  if (ratio < 0.25) penalty += Math.round(3  * penaltyMultiplier);
+  if (errCnt > 3)   penalty += Math.round(8 * penaltyMultiplier);
+  if (ratio < 0.25) penalty += Math.round(6 * penaltyMultiplier);
 
   let bonus = 0;
   if (correct === total) {
     if (!hadErr) bonus += 10;
-    if (hadErr)  bonus +=  3;
+    if (hadErr)  bonus +=  5;
   }
 
-  const pts = Math.max(0, base - penalty + bonus);
+  const pts = Math.min(100, Math.max(0, base - penalty + bonus));
   return { pts, stars, correct, total, base, penalty, bonus, ratio, errCnt };
 }
 
 // Converte pontuação interna para escala 0-100
 function calcFinalScore100() {
-  const totalSubphases = phases.reduce((sum, phase) => sum + phase.subphases.length, 0);
-  const totalPossible = totalSubphases * 30;
-  const raw = Object.values(subphaseScores).reduce((a, b) => a + b, 0);
-  return Math.min(100, Math.max(0, Math.round((raw / totalPossible) * 100)));
+  if (!phases.length) return 0;
+  const total = phases.reduce((sum, _, i) => sum + getPhaseScore(i), 0);
+  return Math.min(100, Math.max(0, Math.round(total / phases.length)));
+}
+
+function savePhaseScore(phaseIndex) {
+  const ph = phases[phaseIndex];
+  if (!ph) return;
+  const phaseScore = getPhaseScore(phaseIndex);
+  phaseScores100[phaseIndex] = phaseScore;
+  try {
+    const progress = {
+      phases: phases.map((phase, i) => ({
+        id: phase.id,
+        title: phase.title,
+        difficulty: phase.difficulty,
+        score: phaseScores100[i] || getPhaseScore(i)
+      })),
+      finalScore: calcFinalScore100()
+    };
+    localStorage.setItem('debuguinhoScoreProgress', JSON.stringify(progress));
+  } catch (error) {
+    console.log('⚠️ Falha ao salvar progresso local:', error?.message || error);
+  }
 }
 
 // ================================================
@@ -309,7 +340,7 @@ function updateHeaderStars() {
     const pts  = getPhaseScore(i);
     const span = document.createElement('span');
     span.className = 'phase-score-pill' + (pts > 0 ? ' earned' : '');
-    span.textContent = ph.icon + ' ' + (pts > 0 ? '+' + pts : '–');
+    span.textContent = ph.icon + ' ' + (pts > 0 ? pts + '/100' : '–');
     row.appendChild(span);
   });
 }
@@ -449,27 +480,34 @@ function showPhaseComplete(result, ph, sub, isLastSubphase, isLastPhase) {
     if (i < result.stars) setTimeout(() => s.classList.add('lit'), 80 + i * 220);
   }
 
-  scoreLn.textContent = '+' + result.pts + ' pontos!';
+  const phaseScore = getPhaseScore(currentPhase);
+  scoreLn.textContent = result.pts + '/100 pontos nesta subfase';
   scoreLn.style.color = result.pts > 0 ? 'var(--verde)' : '#999';
 
   details.innerHTML = '';
-  addDetailRow(details, 'base', '🎯', 'Pontuação base (' + result.correct + '/' + result.total + ')', '+' + result.base + ' pts');
+  addDetailRow(details, 'base', '🎯', 'Base por acertos (' + result.correct + '/' + result.total + ')', result.base + '/90');
 
-  if (result.bonus > 0) {
-    details.innerHTML += '<div class="pc-detail-divider"></div>';
-    if (!hadError && result.correct === result.total)
-      addDetailRow(details, 'bonus', '🎯', 'Sequência perfeita!', '+10 pts');
-    if (hadError && result.correct === result.total)
-      addDetailRow(details, 'bonus', '💪', 'Persistência!', '+3 pts');
-  }
+  details.innerHTML += '<div class="pc-detail-divider"></div>';
+  if (result.bonus > 0 && !hadError && result.correct === result.total)
+    addDetailRow(details, 'bonus', '🎯', 'Bônus: sequência perfeita sem erros', '+10');
+  else if (result.bonus > 0 && hadError && result.correct === result.total)
+    addDetailRow(details, 'bonus', '💪', 'Bônus: persistência após tentativa', '+5');
+  else
+    addDetailRow(details, 'bonus', '⭐', 'Bônus', '+0');
 
+  details.innerHTML += '<div class="pc-detail-divider"></div>';
   if (result.penalty > 0) {
-    details.innerHTML += '<div class="pc-detail-divider"></div>';
     if (result.errCnt > 3)
-      addDetailRow(details, 'penalty', '⚠️', 'Muitos erros (' + result.errCnt + ')', '-' + Math.round(5 * getDifficultyPenaltyMultiplier()) + ' pts');
+      addDetailRow(details, 'penalty', '⚠️', 'Penalidade: muitos erros (' + result.errCnt + ')', '-' + Math.round(8 * getDifficultyPenaltyMultiplier()));
     if (result.ratio < 0.25)
-      addDetailRow(details, 'penalty', '⚠️', 'Sequência bagunçada', '-' + Math.round(3 * getDifficultyPenaltyMultiplier()) + ' pts');
+      addDetailRow(details, 'penalty', '⚠️', 'Penalidade: sequência bagunçada', '-' + Math.round(6 * getDifficultyPenaltyMultiplier()));
+  } else {
+    addDetailRow(details, 'penalty', '✅', 'Penalidades', '-0');
   }
+
+  details.innerHTML += '<div class="pc-detail-divider"></div>';
+  addDetailRow(details, 'base', '📊', 'Resultado da subfase', result.pts + '/100');
+  addDetailRow(details, 'base', ph.icon, 'Pontuação atual da fase ' + ph.id + ' (' + ph.difficulty + ')', phaseScore + '/100');
 
   if (isLastPhase) {
     btnNext.textContent = '🏆 Ver Resultado Final!';
@@ -510,6 +548,7 @@ function advancePhase() {
   }
 
   if (!isLastPhase) {
+    savePhaseScore(currentPhase);
     currentPhase++;
     currentSubphase = 0;
     initPhase();
@@ -520,6 +559,7 @@ function advancePhase() {
     return;
   }
 
+  savePhaseScore(currentPhase);
   const finalScore100 = calcFinalScore100();
   showToast('🏆 Jogo concluído! Pontuação final: ' + finalScore100 + '/100', 'ok');
   say('Parabéns! Você completou todas as missões com ' + finalScore100 + ' pontos!', 0.8);
@@ -676,8 +716,8 @@ function buildPhaseNav() {
       : '';
     const activeProgress = i === currentPhase ? ' • ' + (currentSubphase + 1) + '/' + ph.subphases.length : '';
     btn.innerHTML = ph.icon + ' Fase ' + ph.id + activeProgress + starsHtml;
-    if (phaseScore > 0) btn.title = phaseScore + ' pts';
-    btn.setAttribute('aria-label', 'Fase ' + ph.id + ': ' + ph.title + ', dificuldade ' + ph.difficulty + (phaseScore > 0 ? ', ' + phaseScore + ' pontos' : ''));
+    if (phaseScore > 0) btn.title = phaseScore + '/100';
+    btn.setAttribute('aria-label', 'Fase ' + ph.id + ': ' + ph.title + ', dificuldade ' + ph.difficulty + (phaseScore > 0 ? ', ' + phaseScore + ' de 100 pontos' : ''));
     btn.setAttribute('aria-current', i === currentPhase ? 'true' : 'false');
     btn.onclick = () => {
       if (i <= currentPhase || phaseScore > 0) { currentPhase = i; currentSubphase = 0; initPhase(); }
@@ -703,6 +743,8 @@ function initPhase() {
   document.getElementById('missionDesc').textContent        = sub.desc;
   document.getElementById('missionHeader').style.background = ph.bg;
   document.getElementById('progressFill').style.background  = ph.pbColor;
+  document.getElementById('scoreVal').textContent           = getPhaseScore(currentPhase) + '/100';
+  document.getElementById('scoreVal').setAttribute('aria-label', 'Pontuação da fase atual: ' + getPhaseScore(currentPhase) + ' de 100 pontos');
 
   updateProgress();
   buildPhaseNav();
@@ -862,10 +904,11 @@ function checkAnswer() {
     const progressKey = getProgressKey();
     subphaseScores[progressKey] = result.pts;
     subphaseStars[progressKey]  = result.stars;
-    score = Object.values(subphaseScores).reduce((a, b) => a + b, 0);
+    phaseScores100[currentPhase] = getPhaseScore(currentPhase);
+    score = getPhaseScore(currentPhase);
 
-    document.getElementById('scoreVal').textContent = score;
-    document.getElementById('scoreVal').setAttribute('aria-label', 'Pontuação total: ' + score + ' pontos');
+    document.getElementById('scoreVal').textContent = score + '/100';
+    document.getElementById('scoreVal').setAttribute('aria-label', 'Pontuação da fase atual: ' + score + ' de 100 pontos');
 
     updateHeaderStars();
 
@@ -874,7 +917,7 @@ function checkAnswer() {
 
     // Feedback por imagem: perfeito (sem erro) = muito bom; com erro = bom
     setCharFeedbackImage(hadError ? 'good' : 'great');
-    say(msg + '. Você ganhou ' + result.pts + ' pontos!', 0.9);
+    say(msg + '. Sua pontuação nesta subfase foi ' + result.pts + ' de 100!', 0.9);
     buildPhaseNav();
 
     setTimeout(() => {
@@ -933,5 +976,6 @@ window.speechSynthesis && window.speechSynthesis.getVoices();
 loadPhases().then(() => {
   subphaseScores = {};
   subphaseStars  = {};
+  phaseScores100 = {};
   buildDifficultyUI();
 });
