@@ -42,12 +42,25 @@ function sendFinalScore({ score, difficulty } = {}) {
 }
 
 // ================================================
-// DIFICULDADE — fixada em 'Médio' (seletor removido)
+// DIFICULDADE — 5 níveis padronizados por fase
 // ================================================
-const currentDifficulty = 'Médio';
-
 function getPlatformDifficulty() {
-  return currentDifficulty;
+  return getCurrentDifficulty();
+}
+
+function getCurrentDifficulty() {
+  return phases[currentPhase]?.difficulty || 'Médio';
+}
+
+function getDifficultyPenaltyMultiplier() {
+  const multipliers = {
+    'Muito Fácil': 0.5,
+    'Fácil': 0.75,
+    'Médio': 1.0,
+    'Difícil': 1.25,
+    'Muito Difícil': 1.5
+  };
+  return multipliers[getCurrentDifficulty()] || 1.0;
 }
 
 function applyDifficulty() {
@@ -262,8 +275,7 @@ function calcScore(sub, slots, errCnt, hadErr, elapsedMs) {
   else                    { base =  0; stars = 0; }
 
   // Penalidades por dificuldade
-  const penaltyMultiplier = currentDifficulty === 'Fácil' ? 0.5
-                          : currentDifficulty === 'Difícil' ? 1.5 : 1.0;
+  const penaltyMultiplier = getDifficultyPenaltyMultiplier();
   let penalty = 0;
   if (errCnt > 3)   penalty += Math.round(5  * penaltyMultiplier);
   if (ratio < 0.25) penalty += Math.round(3  * penaltyMultiplier);
@@ -454,9 +466,9 @@ function showPhaseComplete(result, ph, sub, isLastSubphase, isLastPhase) {
   if (result.penalty > 0) {
     details.innerHTML += '<div class="pc-detail-divider"></div>';
     if (result.errCnt > 3)
-      addDetailRow(details, 'penalty', '⚠️', 'Muitos erros (' + result.errCnt + ')', '-' + Math.round(5 * (currentDifficulty === 'Fácil' ? 0.5 : currentDifficulty === 'Difícil' ? 1.5 : 1)) + ' pts');
+      addDetailRow(details, 'penalty', '⚠️', 'Muitos erros (' + result.errCnt + ')', '-' + Math.round(5 * getDifficultyPenaltyMultiplier()) + ' pts');
     if (result.ratio < 0.25)
-      addDetailRow(details, 'penalty', '⚠️', 'Sequência bagunçada', '-' + Math.round(3 * (currentDifficulty === 'Fácil' ? 0.5 : currentDifficulty === 'Difícil' ? 1.5 : 1)) + ' pts');
+      addDetailRow(details, 'penalty', '⚠️', 'Sequência bagunçada', '-' + Math.round(3 * getDifficultyPenaltyMultiplier()) + ' pts');
   }
 
   if (isLastPhase) {
@@ -665,7 +677,7 @@ function buildPhaseNav() {
     const activeProgress = i === currentPhase ? ' • ' + (currentSubphase + 1) + '/' + ph.subphases.length : '';
     btn.innerHTML = ph.icon + ' Fase ' + ph.id + activeProgress + starsHtml;
     if (phaseScore > 0) btn.title = phaseScore + ' pts';
-    btn.setAttribute('aria-label', 'Fase ' + ph.id + ': ' + ph.title + (phaseScore > 0 ? ', ' + phaseScore + ' pontos' : ''));
+    btn.setAttribute('aria-label', 'Fase ' + ph.id + ': ' + ph.title + ', dificuldade ' + ph.difficulty + (phaseScore > 0 ? ', ' + phaseScore + ' pontos' : ''));
     btn.setAttribute('aria-current', i === currentPhase ? 'true' : 'false');
     btn.onclick = () => {
       if (i <= currentPhase || phaseScore > 0) { currentPhase = i; currentSubphase = 0; initPhase(); }
@@ -687,7 +699,7 @@ function initPhase() {
   phaseStartTime = Date.now();
 
   document.getElementById('missionIcon').textContent        = ph.icon;
-  document.getElementById('missionTitle').textContent       = `Fase ${ph.id} — ${ph.title} — Subfase ${sub.id}: ${sub.title}`;
+  document.getElementById('missionTitle').textContent       = `Fase ${ph.id} — ${ph.title} — ${ph.difficulty} — Subfase ${sub.id}: ${sub.title}`;
   document.getElementById('missionDesc').textContent        = sub.desc;
   document.getElementById('missionHeader').style.background = ph.bg;
   document.getElementById('progressFill').style.background  = ph.pbColor;

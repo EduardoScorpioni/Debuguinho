@@ -5,6 +5,7 @@
     "title": "Começar o Dia",
     "bg": "linear-gradient(135deg,#84E6F8,#3EC8E8)",
     "pbColor": "#0AACCC",
+    "difficulty": "Muito Fácil",
     "desc": "Organize as rotinas para começar o dia",
     "subphases": [
       {
@@ -69,6 +70,7 @@
     "title": "Tarefa de Casa",
     "bg": "linear-gradient(135deg,#B0E3AC,#5BB751)",
     "pbColor": "#3A8C32",
+    "difficulty": "Fácil",
     "desc": "Organize as etapas da tarefa de casa",
     "subphases": [
       {
@@ -77,12 +79,13 @@
         "desc": "Prepare o local para estudar",
         "mission": "Antes da tarefa, organize o ambiente de estudo.",
         "blocks": [
+          { "id": "guardarDistracoes", "name": "Guardar distrações", "icon": "🧸", "img": "" },
           { "id": "cadeira", "name": "Sentar na cadeira", "icon": "🪑", "img": "" },
           { "id": "mesa", "name": "Limpar a mesa", "icon": "🧽", "img": "" },
           { "id": "lapis", "name": "Pegar lápis", "icon": "✏️", "img": "" },
           { "id": "caderno", "name": "Pegar caderno", "icon": "📓", "img": "" }
         ],
-        "sequence": ["cadeira", "mesa", "lapis", "caderno"]
+        "sequence": ["guardarDistracoes", "cadeira", "mesa", "lapis", "caderno"]
       },
       {
         "id": 2,
@@ -91,11 +94,12 @@
         "mission": "Agora vamos começar a tarefa de casa.",
         "blocks": [
           { "id": "abrir", "name": "Abrir caderno", "icon": "📖", "img": "" },
+          { "id": "localizar", "name": "Localizar atividade", "icon": "🔎", "img": "" },
           { "id": "ler", "name": "Ler enunciado", "icon": "👓", "img": "" },
           { "id": "pensar", "name": "Pensar na resposta", "icon": "🤔", "img": "" },
           { "id": "escrever", "name": "Começar a escrever", "icon": "✍️", "img": "" }
         ],
-        "sequence": ["abrir", "ler", "pensar", "escrever"]
+        "sequence": ["abrir", "localizar", "ler", "pensar", "escrever"]
       },
       {
         "id": 3,
@@ -105,10 +109,11 @@
         "blocks": [
           { "id": "ex1", "name": "Fazer exercício 1", "icon": "1️⃣", "img": "" },
           { "id": "ex2", "name": "Fazer exercício 2", "icon": "2️⃣", "img": "" },
+          { "id": "conferir", "name": "Conferir respostas", "icon": "🔍", "img": "" },
           { "id": "apagar", "name": "Apagar erro", "icon": "🧽", "img": "" },
           { "id": "corrigir", "name": "Corrigir resposta", "icon": "✅", "img": "" }
         ],
-        "sequence": ["ex1", "ex2", "apagar", "corrigir"]
+        "sequence": ["ex1", "ex2", "conferir", "apagar", "corrigir"]
       },
       {
         "id": 4,
@@ -132,6 +137,7 @@
     "title": "Hora de Brincar",
     "bg": "linear-gradient(135deg,#F29CA3,#E06070)",
     "pbColor": "#C62A2A",
+    "difficulty": "Médio",
     "desc": "Organize o momento de brincar",
     "subphases": [
       {
@@ -141,11 +147,12 @@
         "mission": "Vamos escolher uma brincadeira legal.",
         "blocks": [
           { "id": "ver", "name": "Ver brinquedos", "icon": "👀", "img": "" },
+          { "id": "pensarEspaco", "name": "Pensar no espaço", "icon": "🏠", "img": "" },
           { "id": "escolher", "name": "Escolher brinquedo", "icon": "🧸", "img": "" },
           { "id": "pegar", "name": "Pegar brinquedo", "icon": "🤲", "img": "" },
           { "id": "espaco", "name": "Preparar espaço", "icon": "🏠", "img": "" }
         ],
-        "sequence": ["ver", "escolher", "pegar", "espaco"]
+        "sequence": ["ver", "pensarEspaco", "escolher", "pegar", "espaco"]
       },
       {
         "id": 2,
@@ -153,12 +160,13 @@
         "desc": "Organize uma brincadeira individual",
         "mission": "Agora vamos brincar sozinho usando a imaginação.",
         "blocks": [
+          { "id": "separarPecas", "name": "Separar peças", "icon": "🧩", "img": "" },
           { "id": "montar", "name": "Montar brinquedo", "icon": "🧩", "img": "" },
           { "id": "historia", "name": "Inventar história", "icon": "📖", "img": "" },
           { "id": "brincar", "name": "Brincar", "icon": "🎮", "img": "" },
           { "id": "terminar", "name": "Terminar brincadeira", "icon": "✅", "img": "" }
         ],
-        "sequence": ["montar", "historia", "brincar", "terminar"]
+        "sequence": ["separarPecas", "montar", "historia", "brincar", "terminar"]
       },
       {
         "id": 3,
@@ -169,9 +177,10 @@
           { "id": "chamar", "name": "Chamar amigo", "icon": "🙋", "img": "" },
           { "id": "dividir", "name": "Dividir brinquedo", "icon": "🤝", "img": "" },
           { "id": "regras", "name": "Combinar regras", "icon": "📋", "img": "" },
+          { "id": "esperarVez", "name": "Esperar a vez", "icon": "⏳", "img": "" },
           { "id": "juntos", "name": "Brincar juntos", "icon": "👧👦", "img": "" }
         ],
-        "sequence": ["chamar", "dividir", "regras", "juntos"]
+        "sequence": ["chamar", "dividir", "regras", "esperarVez", "juntos"]
       },
       {
         "id": 4,
@@ -180,11 +189,12 @@
         "mission": "Depois da brincadeira, organize os brinquedos.",
         "blocks": [
           { "id": "separar", "name": "Separar brinquedos", "icon": "🧸", "img": "" },
+          { "id": "procurarPerdidos", "name": "Procurar peças perdidas", "icon": "🔎", "img": "" },
           { "id": "caixa", "name": "Colocar na caixa", "icon": "📦", "img": "" },
           { "id": "fecharCaixa", "name": "Fechar caixa", "icon": "📫", "img": "" },
           { "id": "guardarLugar", "name": "Guardar no lugar", "icon": "📍", "img": "" }
         ],
-        "sequence": ["separar", "caixa", "fecharCaixa", "guardarLugar"]
+        "sequence": ["separar", "procurarPerdidos", "caixa", "fecharCaixa", "guardarLugar"]
       }
     ]
   },
@@ -194,6 +204,7 @@
     "title": "Hora do Lanche",
     "bg": "linear-gradient(135deg,#F9E784,#F0C800)",
     "pbColor": "#D4A800",
+    "difficulty": "Difícil",
     "desc": "Organize o lanche da tarde",
     "subphases": [
       {
@@ -204,10 +215,12 @@
         "blocks": [
           { "id": "cozinha", "name": "Ir à cozinha", "icon": "🚶", "img": "" },
           { "id": "maos", "name": "Lavar as mãos", "icon": "🧼", "img": "" },
+          { "id": "limparBancada", "name": "Limpar bancada", "icon": "🧽", "img": "" },
           { "id": "prato", "name": "Pegar prato", "icon": "🍽️", "img": "" },
-          { "id": "ingredientes", "name": "Separar ingredientes", "icon": "🥗", "img": "" }
+          { "id": "ingredientes", "name": "Separar ingredientes", "icon": "🥗", "img": "" },
+          { "id": "conferirIngredientes", "name": "Conferir ingredientes", "icon": "👀", "img": "" }
         ],
-        "sequence": ["cozinha", "maos", "prato", "ingredientes"]
+        "sequence": ["cozinha", "maos", "limparBancada", "prato", "ingredientes", "conferirIngredientes"]
       },
       {
         "id": 2,
@@ -216,11 +229,13 @@
         "mission": "Agora vamos montar um sanduíche.",
         "blocks": [
           { "id": "pao", "name": "Pegar pão", "icon": "🍞", "img": "" },
+          { "id": "abrirPao", "name": "Abrir o pão", "icon": "🥖", "img": "" },
           { "id": "queijo", "name": "Colocar queijo", "icon": "🧀", "img": "" },
           { "id": "presunto", "name": "Colocar presunto", "icon": "🥓", "img": "" },
+          { "id": "salada", "name": "Colocar salada", "icon": "🥬", "img": "" },
           { "id": "fecharSanduiche", "name": "Fechar sanduíche", "icon": "🥪", "img": "" }
         ],
-        "sequence": ["pao", "queijo", "presunto", "fecharSanduiche"]
+        "sequence": ["pao", "abrirPao", "queijo", "presunto", "salada", "fecharSanduiche"]
       },
       {
         "id": 3,
@@ -230,10 +245,12 @@
         "blocks": [
           { "id": "mesa", "name": "Levar prato à mesa", "icon": "🍽️", "img": "" },
           { "id": "sentar", "name": "Sentar", "icon": "🪑", "img": "" },
+          { "id": "guardanapo", "name": "Pegar guardanapo", "icon": "🧻", "img": "" },
           { "id": "comer", "name": "Comer lanche", "icon": "😋", "img": "" },
+          { "id": "mastigar", "name": "Mastigar com calma", "icon": "🙂", "img": "" },
           { "id": "suco", "name": "Beber suco", "icon": "🧃", "img": "" }
         ],
-        "sequence": ["mesa", "sentar", "comer", "suco"]
+        "sequence": ["mesa", "sentar", "guardanapo", "comer", "mastigar", "suco"]
       },
       {
         "id": 4,
@@ -244,9 +261,11 @@
           { "id": "pia", "name": "Levar prato à pia", "icon": "🚰", "img": "" },
           { "id": "lixo", "name": "Jogar guardanapo no lixo", "icon": "🗑️", "img": "" },
           { "id": "limpar", "name": "Limpar mesa", "icon": "🧽", "img": "" },
-          { "id": "guardar", "name": "Guardar ingredientes", "icon": "🥗", "img": "" }
+          { "id": "guardar", "name": "Guardar ingredientes", "icon": "🥗", "img": "" },
+          { "id": "lavarMaosFim", "name": "Lavar as mãos novamente", "icon": "🧼", "img": "" },
+          { "id": "conferirCozinha", "name": "Conferir cozinha limpa", "icon": "✅", "img": "" }
         ],
-        "sequence": ["pia", "lixo", "limpar", "guardar"]
+        "sequence": ["pia", "lixo", "limpar", "guardar", "lavarMaosFim", "conferirCozinha"]
       }
     ]
   },
@@ -256,6 +275,7 @@
     "title": "Usando o Computador",
     "bg": "linear-gradient(135deg,#D8A8E8,#AE5ABF)",
     "pbColor": "#7B2FA0",
+    "difficulty": "Muito Difícil",
     "desc": "Organize o uso do computador",
     "subphases": [
       {
@@ -264,12 +284,15 @@
         "desc": "Organize os passos para ligar o computador",
         "mission": "Vamos ligar o computador com cuidado.",
         "blocks": [
+          { "id": "organizarMesa", "name": "Organizar a mesa", "icon": "🧹", "img": "" },
           { "id": "cadeira", "name": "Sentar na cadeira", "icon": "🪑", "img": "" },
+          { "id": "postura", "name": "Ajustar postura", "icon": "🧍", "img": "" },
+          { "id": "cabos", "name": "Conferir cabos", "icon": "🔌", "img": "" },
           { "id": "botao", "name": "Apertar botão", "icon": "🔘", "img": "" },
           { "id": "iniciar", "name": "Esperar iniciar", "icon": "⏳", "img": "" },
           { "id": "area", "name": "Abrir área de trabalho", "icon": "🖥️", "img": "" }
         ],
-        "sequence": ["cadeira", "botao", "iniciar", "area"]
+        "sequence": ["organizarMesa", "cadeira", "postura", "cabos", "botao", "iniciar", "area"]
       },
       {
         "id": 2,
@@ -279,10 +302,13 @@
         "blocks": [
           { "id": "programa", "name": "Abrir programa", "icon": "📂", "img": "" },
           { "id": "arquivo", "name": "Criar arquivo", "icon": "📄", "img": "" },
+          { "id": "nomear", "name": "Nomear arquivo", "icon": "🏷️", "img": "" },
           { "id": "texto", "name": "Digitar texto", "icon": "⌨️", "img": "" },
-          { "id": "imagem", "name": "Inserir imagem", "icon": "🖼️", "img": "" }
+          { "id": "revisarTexto", "name": "Revisar texto", "icon": "🔍", "img": "" },
+          { "id": "imagem", "name": "Inserir imagem", "icon": "🖼️", "img": "" },
+          { "id": "organizarConteudo", "name": "Organizar conteúdo", "icon": "🧩", "img": "" }
         ],
-        "sequence": ["programa", "arquivo", "texto", "imagem"]
+        "sequence": ["programa", "arquivo", "nomear", "texto", "revisarTexto", "imagem", "organizarConteudo"]
       },
       {
         "id": 3,
@@ -290,12 +316,15 @@
         "desc": "Organize os passos para salvar",
         "mission": "É importante salvar o trabalho antes de sair.",
         "blocks": [
-          { "id": "revisar", "name": "Revisar texto", "icon": "🔍", "img": "" },
+          { "id": "revisar", "name": "Revisar trabalho", "icon": "🔍", "img": "" },
           { "id": "salvar", "name": "Clicar em salvar", "icon": "💾", "img": "" },
           { "id": "pasta", "name": "Escolher pasta", "icon": "📁", "img": "" },
-          { "id": "confirmar", "name": "Confirmar salvamento", "icon": "✅", "img": "" }
+          { "id": "nomeCorreto", "name": "Conferir nome do arquivo", "icon": "🏷️", "img": "" },
+          { "id": "confirmar", "name": "Confirmar salvamento", "icon": "✅", "img": "" },
+          { "id": "verificarArquivo", "name": "Verificar arquivo salvo", "icon": "👀", "img": "" },
+          { "id": "backup", "name": "Fazer cópia de segurança", "icon": "🛡️", "img": "" }
         ],
-        "sequence": ["revisar", "salvar", "pasta", "confirmar"]
+        "sequence": ["revisar", "salvar", "pasta", "nomeCorreto", "confirmar", "verificarArquivo", "backup"]
       },
       {
         "id": 4,
@@ -303,12 +332,15 @@
         "desc": "Organize os passos para encerrar o uso",
         "mission": "Depois de usar, desligue tudo corretamente.",
         "blocks": [
+          { "id": "salvo", "name": "Confirmar que salvou", "icon": "✅", "img": "" },
           { "id": "fechar", "name": "Fechar programa", "icon": "❎", "img": "" },
+          { "id": "organizarArquivos", "name": "Organizar arquivos", "icon": "📁", "img": "" },
           { "id": "desligar", "name": "Desligar computador", "icon": "🔌", "img": "" },
           { "id": "tela", "name": "Esperar apagar tela", "icon": "🖥️", "img": "" },
+          { "id": "arrumarMesa", "name": "Arrumar a mesa", "icon": "🧹", "img": "" },
           { "id": "sair", "name": "Sair da cadeira", "icon": "🚶", "img": "" }
         ],
-        "sequence": ["fechar", "desligar", "tela", "sair"]
+        "sequence": ["salvo", "fechar", "organizarArquivos", "desligar", "tela", "arrumarMesa", "sair"]
       }
     ]
   }
