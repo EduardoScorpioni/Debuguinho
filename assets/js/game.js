@@ -68,6 +68,16 @@ function getDifficultyPenaltyMultiplier() {
   return multipliers[getCurrentDifficulty()] || 1.0;
 }
 
+const FREE_HINTS_BEFORE_PENALTY = 2;
+const BASE_HINT_PENALTY = 5;
+const MAX_HINT_PENALTY = 20;
+
+function calcHintPenalty(hintCnt) {
+  const extraHints = Math.max(0, hintCnt - FREE_HINTS_BEFORE_PENALTY);
+  if (!extraHints) return 0;
+  return Math.min(MAX_HINT_PENALTY, extraHints * BASE_HINT_PENALTY);
+}
+
 function applyDifficulty() {
   // Blocos já embaralhados pelo buildBlocks — nada extra a fazer no modo único
 }
@@ -636,7 +646,7 @@ function getPhaseStars(phaseIndex) {
 // ================================================
 // PONTUAÇÃO — escala 0-100 conforme manual
 // ================================================
-function calcScore(sub, slots, errCnt, hadErr, elapsedMs) {
+function calcScore(sub, slots, errCnt, hadErr, elapsedMs, hintCnt = 0) {
   const total   = sub.sequence.length;
   const correct = sub.sequence.filter((id, i) => slots[i] === id).length;
   const ratio   = correct / total;
@@ -655,6 +665,8 @@ function calcScore(sub, slots, errCnt, hadErr, elapsedMs) {
   let penalty = 0;
   if (errCnt > 3)   penalty += Math.round(8 * penaltyMultiplier);
   if (ratio < 0.25) penalty += Math.round(6 * penaltyMultiplier);
+  const hintPenalty = calcHintPenalty(hintCnt);
+  penalty += hintPenalty;
 
   let bonus = 0;
   if (correct === total) {
@@ -663,7 +675,73 @@ function calcScore(sub, slots, errCnt, hadErr, elapsedMs) {
   }
 
   const pts = Math.min(100, Math.max(0, base - penalty + bonus));
-  return { pts, stars, correct, total, base, penalty, bonus, ratio, errCnt };
+  return { pts, stars, correct, total, base, penalty, bonus, ratio, errCnt, hintCnt, hintPenalty };
+}
+
+function getLiveScorePreview() {
+  const sub = getCurrentSubphase();
+  if (!sub) return null;
+  const filled = slots.filter(s => s !== null).length;
+  const correct = sub.sequence.filter((id, i) => slots[i] === id).length;
+  const ratio = sub.sequence.length ? correct / sub.sequence.length : 0;
+  const penaltyMultiplier = getDifficultyPenaltyMultiplier();
+  let pendingPenalty = 0;
+  if (errorCount > 3) pendingPenalty += Math.round(8 * penaltyMultiplier);
+  if (filled === sub.sequence.length && ratio < 0.25) pendingPenalty += Math.round(6 * penaltyMultiplier);
+  const hintPenalty = calcHintPenalty(hintCount);
+  pendingPenalty += hintPenalty;
+  return { filled, total: sub.sequence.length, correct, ratio, pendingPenalty, hintPenalty };
+}
+
+function updateScoreRulesPanel() {
+  const bonusEl = document.getElementById('bonusStatus');
+  const hintEl = document.getElementById('hintStatus');
+  const errorEl = document.getElementById('errorStatus');
+  const panel = document.getElementById('scoreRulesPanel');
+  if (!bonusEl || !hintEl || !errorEl || !panel) return;
+
+  const preview = getLiveScorePreview();
+  if (!preview) return;
+
+  const bonusText = hadError
+    ? 'Bônus de persistência se acertar: +5'
+    : 'Bônus perfeito disponível: +10';
+  bonusEl.className = 'score-rule-card ' + (hadError ? 'warn' : 'bonus');
+  bonusEl.querySelector('.score-rule-text').textContent = bonusText;
+
+  const freeHintsLeft = Math.max(0, FREE_HINTS_BEFORE_PENALTY - hintCount);
+  let hintText = `Dicas usadas: ${hintCount} (${freeHintsLeft} sem desconto)`;
+  let hintClass = 'neutral';
+  if (preview.hintPenalty > 0) {
+    hintText = `Dicas usadas: ${hintCount} (penalidade ativa: -${preview.hintPenalty})`;
+    hintClass = 'penalty';
+  } else if (freeHintsLeft === 0) {
+    hintText = `Dicas usadas: ${hintCount} (próxima dica desconta pontos)`;
+    hintClass = 'warn';
+  }
+  hintEl.className = 'score-rule-card ' + hintClass;
+  hintEl.querySelector('.score-rule-text').textContent = hintText;
+
+  let errorText = `Tentativas erradas: ${errorCount}`;
+  let errorClass = 'neutral';
+  if (errorCount > 3) {
+    errorText += ` (penalidade ativa: -${Math.round(8 * getDifficultyPenaltyMultiplier())})`;
+    errorClass = 'penalty';
+  } else if (errorCount > 0) {
+    errorText += ' (bônus perfeito perdido)';
+    errorClass = 'warn';
+  }
+  if (preview.filled === preview.total && preview.ratio < 0.25) {
+    errorText += `; sequência bagunçada: -${Math.round(6 * getDifficultyPenaltyMultiplier())}`;
+    errorClass = 'penalty';
+  }
+  errorEl.className = 'score-rule-card ' + errorClass;
+  errorEl.querySelector('.score-rule-text').textContent = errorText;
+
+  panel.setAttribute(
+    'aria-label',
+    `${bonusText}. ${hintText}. ${errorText}. Progresso: ${preview.filled} de ${preview.total} blocos, ${preview.correct} na posição correta.`
+  );
 }
 
 // Converte pontuação interna para escala 0-100
@@ -866,6 +944,8 @@ function showPhaseComplete(result, ph, sub, isLastSubphase, isLastPhase) {
       addDetailRow(details, 'penalty', '⚠️', 'Penalidade: muitos erros (' + result.errCnt + ')', '-' + Math.round(8 * getDifficultyPenaltyMultiplier()));
     if (result.ratio < 0.25)
       addDetailRow(details, 'penalty', '⚠️', 'Penalidade: sequência bagunçada', '-' + Math.round(6 * getDifficultyPenaltyMultiplier()));
+    if (result.hintPenalty > 0)
+      addDetailRow(details, 'penalty', '💡', 'Penalidade: dicas extras (' + result.hintCnt + ')', '-' + result.hintPenalty);
   } else {
     addDetailRow(details, 'penalty', '✅', 'Penalidades', '-0');
   }
@@ -1123,6 +1203,7 @@ function initPhase() {
   document.getElementById('scoreVal').setAttribute('aria-label', 'Pontuação da fase atual: ' + getPhaseScore(currentPhase) + ' de 100 pontos');
 
   updateProgress();
+  updateScoreRulesPanel();
   buildPhaseNav();
   buildBlocks();
   buildSlots();
@@ -1241,6 +1322,7 @@ function addToSlot(idx, blockId, options = {}) {
   }
   say(b.name, 1.0);
   updateProgress();
+  updateScoreRulesPanel();
   const filledCount = slots.filter(s => s !== null).length;
   announceGameStatus(`${b.name} adicionado na posição ${idx + 1}. ${filledCount} de ${slots.length} posições preenchidas.`);
   dragItem = null;
@@ -1271,6 +1353,7 @@ function removeFromSlot(idx, options = {}) {
     if (options.returnFocus) blkEl.focus();
   }
   updateProgress();
+  updateScoreRulesPanel();
   announceGameStatus(`${b.name} removido da posição ${idx + 1}.`);
   refreshScanTargets();
 }
@@ -1305,7 +1388,7 @@ function checkAnswer() {
   if (allCorrect) {
     slotEls.forEach(s => { s.classList.remove('wrong'); s.classList.add('correct'); });
 
-    const result = calcScore(sub, slots, errorCount, hadError, elapsed);
+    const result = calcScore(sub, slots, errorCount, hadError, elapsed, hintCount);
     const progressKey = getProgressKey();
     subphaseScores[progressKey] = result.pts;
     subphaseStars[progressKey]  = result.stars;
@@ -1337,6 +1420,7 @@ function checkAnswer() {
   } else {
     errorCount++;
     hadError = true;
+    updateScoreRulesPanel();
     slotEls.forEach((s, i) => {
       s.classList.remove('correct', 'wrong');
       s.classList.add(slots[i] === sub.sequence[i] ? 'correct' : 'wrong');
@@ -1360,15 +1444,22 @@ function checkAnswer() {
 // DICA
 // ================================================
 function showHint() {
-  hintCount++;
   const sub      = getCurrentSubphase();
   const wrongIdx = sub.sequence.findIndex((id, i) => slots[i] !== id);
-  if (wrongIdx === -1) { say('Você está indo bem!'); return; }
+  if (wrongIdx === -1) {
+    announceGameStatus('Nenhuma dica necessária agora. A sequência já está correta.');
+    say('Você está indo bem!');
+    return;
+  }
+  hintCount++;
+  updateScoreRulesPanel();
   const correct = sub.blocks.find(b => b.id === sub.sequence[wrongIdx]);
   const hint = `Na posição ${wrongIdx + 1}, vai o bloco: ${correct.name}`;
   say(hint, 0.85);
   showToast('💡 ' + hint, 'tip');
-  announceGameStatus('Dica: ' + hint);
+  const hintPenalty = calcHintPenalty(hintCount);
+  const penaltyInfo = hintPenalty > 0 ? ` Penalidade por dicas ativa: menos ${hintPenalty} pontos.` : '';
+  announceGameStatus('Dica: ' + hint + penaltyInfo);
   setChar(correct.name + ' ' + correct.icon);
 }
 

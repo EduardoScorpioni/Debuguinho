@@ -608,6 +608,48 @@ body.colorblind-active .drop-slot.wrong::after {
 .progress-bar-wrap { height: 9px; background: rgba(0,0,0,0.1); border-radius: 5px; margin-top: 6px; overflow: hidden; }
 .progress-bar-fill { height: 100%; border-radius: 5px; transition: width 0.5s; }
 
+.score-rules-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 14px 0;
+  padding: 10px;
+  background: rgba(255,255,255,0.64);
+  border: 2px solid rgba(174,90,191,0.18);
+  border-radius: 16px;
+}
+.score-rule-card {
+  min-height: 48px;
+  border-radius: 12px;
+  border: 2px solid rgba(0,0,0,0.08);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  font-size: calc(11px * var(--font-scale));
+  font-weight: 900;
+  line-height: 1.2;
+  color: #333;
+}
+.score-rule-icon { font-size: calc(18px * var(--font-scale)); flex-shrink: 0; }
+.score-rule-card.bonus { border-color: var(--verde); background: rgba(91,183,81,0.12); color: #235F1E; }
+.score-rule-card.warn { border-color: var(--amar-dk); background: rgba(249,231,132,0.35); color: #6B4A00; }
+.score-rule-card.penalty { border-color: var(--vermelho); background: rgba(198,42,42,0.12); color: var(--vermelho); }
+.score-rule-card.neutral { border-color: var(--azul-dk); background: rgba(132,230,248,0.14); color: #064A58; }
+body.high-contrast .score-rule-card {
+  background: #000 !important;
+  color: #FFD800 !important;
+  border: 3px solid #FFD800 !important;
+}
+body.high-contrast .score-rules-panel {
+  background: #000 !important;
+  border: 3px solid #FFD800 !important;
+}
+body.high-contrast .score-rule-card.bonus { border-color: #00FF66 !important; color: #00FF66 !important; }
+body.high-contrast .score-rule-card.warn { border-color: #FFD800 !important; color: #FFD800 !important; }
+body.high-contrast .score-rule-card.penalty { border-color: #FF4A4A !important; color: #FF4A4A !important; }
+
 .speak-btn {
   margin-left: auto; background: #fff;
   border: 3px solid var(--azul); border-radius: 50%;
@@ -1195,6 +1237,7 @@ body.high-contrast .tutorial-close {
   .left-panel { width: 100%; flex-direction: row; flex-wrap: wrap; justify-content: center; border-right: none; border-bottom: 3px dashed var(--roxo-lt); }
   .left-panel .char-wrap-vertical { display: none; }
   .drop-zone { grid-template-columns: repeat(2, 1fr); }
+  .score-rules-panel { grid-template-columns: 1fr; }
   .top-controls-bar { gap: 8px; }
   .keyboard-hint { display: none; }
 }

@@ -213,6 +213,21 @@
 
     <nav class="phase-nav" id="phaseNav" role="navigation" aria-label="Navegação de fases"></nav>
 
+    <div class="score-rules-panel" id="scoreRulesPanel" role="status" aria-live="polite" aria-atomic="true">
+      <div class="score-rule-card bonus" id="bonusStatus">
+        <span class="score-rule-icon" aria-hidden="true">🎯</span>
+        <span class="score-rule-text">Bônus perfeito disponível: +10</span>
+      </div>
+      <div class="score-rule-card neutral" id="hintStatus">
+        <span class="score-rule-icon" aria-hidden="true">💡</span>
+        <span class="score-rule-text">Dicas usadas: 0 (2 sem desconto)</span>
+      </div>
+      <div class="score-rule-card neutral" id="errorStatus">
+        <span class="score-rule-icon" aria-hidden="true">⚠️</span>
+        <span class="score-rule-text">Tentativas erradas: 0</span>
+      </div>
+    </div>
+
     <!-- JOGO -->
     <main class="game-area" role="main" aria-describedby="gameInstructions">
       <p class="sr-only" id="gameInstructions">
