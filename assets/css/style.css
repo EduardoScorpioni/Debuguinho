@@ -866,6 +866,131 @@ body.scan-mode .scan-select-btn {
 .pc-btn-next.game-done { background: linear-gradient(135deg, var(--amar-dk) 0%, #E08000 100%); box-shadow: 0 6px 20px rgba(212,168,0,0.55); }
 
 /* ================================================
+   TUTORIAL
+   ================================================ */
+.tutorial-overlay {
+  position: fixed; inset: 0;
+  z-index: 12000;
+  background: rgba(32, 8, 46, 0.74);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease;
+  padding: 18px;
+}
+.tutorial-overlay.visible {
+  opacity: 1; pointer-events: all;
+}
+.tutorial-overlay[hidden] { display: none; }
+.tutorial-card {
+  width: min(460px, 94vw);
+  background: var(--bg);
+  border: 4px solid var(--roxo-lt);
+  border-radius: 22px;
+  box-shadow: 0 24px 64px rgba(80,20,110,0.5);
+  padding: 24px;
+  position: relative;
+}
+.tutorial-close {
+  position: absolute; top: 12px; left: 12px;
+  width: 34px; height: 34px;
+  border-radius: 999px;
+  border: 2px solid var(--roxo);
+  background: #fff;
+  color: var(--roxo);
+  font-weight: 900;
+  cursor: pointer;
+}
+.tutorial-step-pill {
+  position: absolute; top: 12px; right: 14px;
+  background: var(--roxo);
+  color: #fff;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: calc(12px * var(--font-scale));
+  font-weight: 900;
+}
+.tutorial-icon {
+  font-size: 48px;
+  text-align: center;
+  margin: 18px 0 6px;
+}
+.tutorial-card h2 {
+  color: var(--roxo);
+  font-size: calc(24px * var(--font-scale));
+  font-weight: 900;
+  text-align: center;
+  margin-bottom: 8px;
+}
+.tutorial-card p {
+  color: #444;
+  font-size: calc(14px * var(--font-scale));
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: center;
+}
+.tutorial-list {
+  margin: 16px 0 18px;
+  padding-left: 22px;
+  color: #333;
+  font-size: calc(13px * var(--font-scale));
+  font-weight: 800;
+  line-height: 1.55;
+}
+.tutorial-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.tutorial-btn {
+  font-family: 'Nunito', sans-serif;
+  font-size: calc(13px * var(--font-scale));
+  font-weight: 900;
+  border-radius: 12px;
+  padding: 9px 14px;
+  cursor: pointer;
+  border: 2px solid var(--roxo);
+}
+.tutorial-btn.primary {
+  background: var(--roxo);
+  color: #fff;
+}
+.tutorial-btn.secondary {
+  background: #fff;
+  color: var(--roxo);
+}
+.tutorial-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.tutorial-close:focus,
+.tutorial-btn:focus {
+  outline: 3px solid var(--amarelo);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(249,231,132,0.35);
+}
+body.high-contrast .tutorial-overlay { background: rgba(0,0,0,0.88); }
+body.high-contrast .tutorial-card {
+  background: #000 !important;
+  border-color: #FFD800 !important;
+  color: #FFD800 !important;
+  box-shadow: 0 0 0 5px #FFFFFF !important;
+}
+body.high-contrast .tutorial-card h2,
+body.high-contrast .tutorial-card p,
+body.high-contrast .tutorial-list {
+  color: #FFD800 !important;
+}
+body.high-contrast .tutorial-step-pill,
+body.high-contrast .tutorial-btn,
+body.high-contrast .tutorial-close {
+  background: #FFD800 !important;
+  color: #000 !important;
+  border: 3px solid #FFFFFF !important;
+}
+
+/* ================================================
    ANIMAÇÃO DE HISTÓRIA (slideshow pós-fase)
    ================================================ */
 #storyOverlay {

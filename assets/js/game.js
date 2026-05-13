@@ -235,6 +235,149 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// ================================================
+// TUTORIAL ACESSÍVEL
+// ================================================
+let tutorialStep = 0;
+let tutorialLastFocus = null;
+
+const tutorialSteps = [
+  {
+    icon: '🎯',
+    title: 'Objetivo do jogo',
+    text: 'Em cada subfase, organize os blocos na ordem correta para completar uma rotina.',
+    items: ['Leia ou ouça a missão atual.', 'Observe os espaços numerados da sequência.', 'Use os blocos disponíveis para montar a ordem certa.']
+  },
+  {
+    icon: '🧩',
+    title: 'Adicionar blocos',
+    text: 'Você pode jogar sem arrastar.',
+    items: ['Clique ou toque em um bloco para colocá-lo no próximo espaço vazio.', 'Com teclado, navegue com Tab e pressione Enter ou Espaço no bloco.', 'O foco avança para o próximo bloco disponível.']
+  },
+  {
+    icon: '↩️',
+    title: 'Corrigir a sequência',
+    text: 'Se colocar um bloco errado, remova e tente novamente.',
+    items: ['Clique ou toque em um espaço preenchido para remover o bloco.', 'Com teclado, pressione Enter, Espaço, Delete ou Backspace no espaço preenchido.', 'Use o botão Dica quando precisar de ajuda.']
+  },
+  {
+    icon: '♿',
+    title: 'Recursos de acessibilidade',
+    text: 'O jogo tem recursos para diferentes formas de uso.',
+    items: ['Alto contraste usa preto, amarelo e bordas fortes.', 'Modo daltônico adiciona paletas e sinais visuais.', 'Modo varredura permite jogar com um único toque no botão Selecionar.']
+  },
+  {
+    icon: '✅',
+    title: 'Verificar e pontuar',
+    text: 'Quando todos os espaços estiverem preenchidos, verifique a resposta.',
+    items: ['Use o botão Verificar ou o atalho V.', 'A pontuação considera acertos, bônus e penalidades.', 'Ao concluir uma subfase, avance para a próxima missão.']
+  }
+];
+
+function isTutorialOpen() {
+  const overlay = document.getElementById('tutorialOverlay');
+  return !!(overlay && !overlay.hidden);
+}
+
+function setTutorialSeen() {
+  try { localStorage.setItem('debuguinhoTutorialSeen', 'true'); } catch (e) { /* localStorage opcional */ }
+}
+
+function shouldAutoOpenTutorial() {
+  try { return localStorage.getItem('debuguinhoTutorialSeen') !== 'true'; }
+  catch (e) { return false; }
+}
+
+function renderTutorialStep() {
+  const step = tutorialSteps[tutorialStep];
+  const icon = document.getElementById('tutorialIcon');
+  const title = document.getElementById('tutorialTitle');
+  const text = document.getElementById('tutorialText');
+  const list = document.getElementById('tutorialList');
+  const counter = document.getElementById('tutorialCounter');
+  const prev = document.getElementById('tutorialPrevBtn');
+  const next = document.getElementById('tutorialNextBtn');
+
+  if (!step || !icon || !title || !text || !list || !counter || !prev || !next) return;
+
+  icon.textContent = step.icon;
+  title.textContent = step.title;
+  text.textContent = step.text;
+  counter.textContent = `${tutorialStep + 1}/${tutorialSteps.length}`;
+  list.innerHTML = '';
+  step.items.forEach(item => {
+    const li = document.createElement('li');
+    li.textContent = item;
+    list.appendChild(li);
+  });
+
+  prev.disabled = tutorialStep === 0;
+  next.textContent = tutorialStep === tutorialSteps.length - 1 ? 'Começar' : 'Próximo';
+  next.setAttribute('aria-label', tutorialStep === tutorialSteps.length - 1 ? 'Fechar tutorial e começar a jogar' : 'Ir para próxima etapa do tutorial');
+  announceGameStatus(`Tutorial, etapa ${tutorialStep + 1} de ${tutorialSteps.length}: ${step.title}.`);
+}
+
+function openTutorial(options = {}) {
+  const overlay = document.getElementById('tutorialOverlay');
+  if (!overlay) return;
+  tutorialLastFocus = document.activeElement;
+  tutorialStep = 0;
+  overlay.hidden = false;
+  overlay.classList.add('visible');
+  renderTutorialStep();
+  closeA11yPanel(false);
+  setTimeout(() => {
+    const closeBtn = document.getElementById('tutorialCloseBtn');
+    if (closeBtn) closeBtn.focus();
+  }, 50);
+  if (options.auto) setTutorialSeen();
+}
+
+function closeTutorial(returnFocus = true) {
+  const overlay = document.getElementById('tutorialOverlay');
+  if (!overlay) return;
+  setTutorialSeen();
+  overlay.classList.remove('visible');
+  overlay.hidden = true;
+  announceGameStatus('Tutorial fechado. Você já pode jogar.');
+  if (returnFocus && tutorialLastFocus && typeof tutorialLastFocus.focus === 'function') {
+    tutorialLastFocus.focus();
+  }
+}
+
+function nextTutorialStep() {
+  if (tutorialStep >= tutorialSteps.length - 1) {
+    closeTutorial();
+    return;
+  }
+  tutorialStep++;
+  renderTutorialStep();
+  const next = document.getElementById('tutorialNextBtn');
+  if (next) next.focus();
+}
+
+function prevTutorialStep() {
+  if (tutorialStep <= 0) return;
+  tutorialStep--;
+  renderTutorialStep();
+  const prev = document.getElementById('tutorialPrevBtn');
+  if (prev) prev.focus();
+}
+
+function speakTutorialStep() {
+  const step = tutorialSteps[tutorialStep];
+  if (!step) return;
+  const msg = `${step.title}. ${step.text} ${step.items.join(' ')}`;
+  announceGameStatus(msg);
+  say(msg, 0.85);
+}
+
+function getTutorialFocusable() {
+  const overlay = document.getElementById('tutorialOverlay');
+  if (!overlay || overlay.hidden) return [];
+  return [...overlay.querySelectorAll('button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')];
+}
+
 
 // ================================================
 // ATALHOS DE TECLADO (documentados via aria-keyshortcuts)
@@ -242,6 +385,20 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
   // Ignorar quando foco está em input/select
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+  if (isTutorialOpen() && e.key === 'Tab') {
+    const focusable = getTutorialFocusable();
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 
   switch (e.key) {
     case 'v': case 'V':
@@ -268,14 +425,24 @@ document.addEventListener('keydown', (e) => {
     case 's': case 'S':
       if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); toggleScanMode(); }
       break;
+    case 't': case 'T':
+      if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); openTutorial(); }
+      break;
+    case 'ArrowRight':
+      if (isTutorialOpen()) { e.preventDefault(); nextTutorialStep(); }
+      break;
+    case 'ArrowLeft':
+      if (isTutorialOpen()) { e.preventDefault(); prevTutorialStep(); }
+      break;
     case 'Enter':
     case ' ':
-      if (scanMode && !e.ctrlKey && !e.metaKey) {
+      if (scanMode && !isTutorialOpen() && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         activateScanTarget();
       }
       break;
     case 'Escape':
+      if (isTutorialOpen()) { closeTutorial(); break; }
       const panel = document.getElementById('a11yPanel');
       if (panel && panel.classList.contains('open')) { closeA11yPanel(); }
       const overlay = document.getElementById('phaseCompleteOverlay');
@@ -1219,4 +1386,7 @@ loadPhases().then(() => {
   subphaseStars  = {};
   phaseScores100 = {};
   buildDifficultyUI();
+  if (shouldAutoOpenTutorial()) {
+    setTimeout(() => openTutorial({ auto: true }), 700);
+  }
 });

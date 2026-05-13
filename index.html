@@ -64,6 +64,22 @@
     </div>
   </div>
 
+  <div class="tutorial-overlay" id="tutorialOverlay" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle" aria-describedby="tutorialText tutorialList" hidden>
+    <div class="tutorial-card">
+      <button class="tutorial-close" id="tutorialCloseBtn" onclick="closeTutorial()" aria-label="Fechar tutorial">X</button>
+      <div class="tutorial-step-pill" id="tutorialCounter">1/5</div>
+      <div class="tutorial-icon" id="tutorialIcon" aria-hidden="true">🎯</div>
+      <h2 id="tutorialTitle">Como jogar</h2>
+      <p id="tutorialText">Monte a sequência correta usando os blocos disponíveis.</p>
+      <ul id="tutorialList" class="tutorial-list"></ul>
+      <div class="tutorial-actions">
+        <button class="tutorial-btn secondary" id="tutorialSpeakBtn" onclick="speakTutorialStep()" aria-label="Ouvir etapa atual do tutorial">🔊 Ouvir</button>
+        <button class="tutorial-btn secondary" id="tutorialPrevBtn" onclick="prevTutorialStep()">Anterior</button>
+        <button class="tutorial-btn primary" id="tutorialNextBtn" onclick="nextTutorialStep()">Próximo</button>
+      </div>
+    </div>
+  </div>
+
   <div class="game-root">
 
     <!-- HEADER -->
@@ -102,6 +118,16 @@
                aria-label="Volume do áudio"
                aria-valuemin="0" aria-valuemax="1" aria-valuenow="1" />
       </div>
+
+      <div class="top-controls-sep" aria-hidden="true"></div>
+
+      <button id="btnTutorial" class="btn-icon-ctrl"
+              onclick="openTutorial()"
+              aria-label="Abrir tutorial do jogo"
+              aria-keyshortcuts="T"
+              title="Tutorial (T)">
+        ❔ Tutorial
+      </button>
 
       <div class="top-controls-sep" aria-hidden="true"></div>
 
@@ -158,6 +184,13 @@
             🔁 Varredura: Desativada
           </button>
 
+          <button id="btnTutorialA11y"
+                  onclick="openTutorial()"
+                  aria-label="Abrir tutorial acessível do jogo"
+                  aria-keyshortcuts="T">
+            ❔ Tutorial
+          </button>
+
           <div class="a11y-shortcuts" aria-label="Atalhos de teclado disponíveis">
             <strong>Atalhos de teclado:</strong><br>
             <b>V</b> — Verificar sequência<br>
@@ -168,6 +201,7 @@
             <b>A</b> — Acessibilidade<br>
             <b>C</b> — Modo daltônico<br>
             <b>S</b> — Modo varredura<br>
+            <b>T</b> — Tutorial<br>
             <b>Espaço/Enter</b> — Selecionar varredura<br>
             <b>Esc</b> — Fechar painel
           </div>
