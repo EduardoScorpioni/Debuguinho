@@ -80,10 +80,60 @@ body.high-contrast .feedback-toast.err { background: #8b0000; }
 body.high-contrast .btn-check   { background: #006400; color: #fff; }
 body.high-contrast .btn-hint    { background: #7a5200; color: #fff; border-color: #000; }
 body.high-contrast .btn-reset   { background: #8b0000; color: #fff; border-color: #000; }
+body.high-contrast .scan-active { outline-color: #ff0 !important; box-shadow: 0 0 0 8px #000, 0 0 0 14px #ff0 !important; }
+body.high-contrast .scan-select-btn { background: #000; color: #ff0; border-color: #ff0; }
 body.high-contrast .btn-speak-all { background: #003566; color: #fff; }
 
 /* ================================================
-   BARRA SUPERIOR DE CONTROLES (dificuldade + áudio + acessibilidade)
+   MODOS DALTÔNICOS
+   Cada modo aplica um filtro SVG via CSS filter que simula
+   a visão do usuário, tornando os elementos mais distinguíveis.
+   ================================================ */
+
+/* Deuteranopia — dificuldade para distinguir verde e vermelho */
+body.cb-deuteranopia {
+  filter: url('#filter-deuteranopia');
+}
+
+/* Protanopia — ausência de percepção do vermelho */
+body.cb-protanopia {
+  filter: url('#filter-protanopia');
+}
+
+/* Tritanopia — dificuldade para distinguir azul e amarelo */
+body.cb-tritanopia {
+  filter: url('#filter-tritanopia');
+}
+
+/* Filtros SVG embutidos — injetados no body via JS abaixo
+   (ver final do style.css — SVG inline no HTML) */
+
+/* Indicador visual no botão quando modo ativo */
+#btnColorblind[aria-pressed="true"] {
+  background: var(--azul);
+  color: var(--azul-dk);
+  border-color: var(--azul-dk);
+}
+
+/* ================================================
+   IMAGEM DE FEEDBACK DO PERSONAGEM
+   ================================================ */
+.char-feedback-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 8px;
+  /* Animação suave ao trocar de estado */
+  animation: char-feedback-pop 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+@keyframes char-feedback-pop {
+  from { transform: scale(0.7) rotate(-8deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0);       opacity: 1; }
+}
+
+/* ================================================
+   BARRA SUPERIOR DE CONTROLES (áudio + acessibilidade)
    ================================================ */
 .top-controls-bar {
   background: #f3e8ff;
@@ -99,22 +149,6 @@ body.high-contrast .btn-speak-all { background: #003566; color: #fff; }
   font-size: calc(12px * var(--font-scale));
   font-weight: 900;
   color: var(--roxo);
-}
-
-.difficulty-select {
-  font-family: 'Nunito', sans-serif;
-  font-size: calc(13px * var(--font-scale));
-  font-weight: 800;
-  color: var(--roxo);
-  background: #fff;
-  border: 2px solid var(--roxo);
-  border-radius: 12px;
-  padding: 5px 10px;
-  cursor: pointer;
-}
-.difficulty-select:focus {
-  outline: 3px solid var(--roxo);
-  outline-offset: 2px;
 }
 
 .top-controls-sep {
@@ -194,6 +228,22 @@ body.high-contrast .btn-speak-all { background: #003566; color: #fff; }
 .a11y-panel.open {
   display: flex;
 }
+.a11y-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.a11y-close-btn {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  text-align: center;
+}
 .a11y-panel-title {
   font-size: calc(12px * var(--font-scale));
   font-weight: 900;
@@ -214,6 +264,14 @@ body.high-contrast .btn-speak-all { background: #003566; color: #fff; }
   color: var(--roxo);
   text-align: left;
   transition: all 0.15s;
+}
+.a11y-panel .a11y-close-btn {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 999px;
+  padding: 0;
+  text-align: center;
 }
 .a11y-panel button:hover { background: var(--roxo-lt); }
 .a11y-panel button:focus {
@@ -470,6 +528,55 @@ body.high-contrast .btn-speak-all { background: #003566; color: #fff; }
 .feedback-toast.ok  { background: var(--verde);    color: #fff;           box-shadow: 0 8px 28px rgba(91,183,81,0.5); }
 .feedback-toast.err { background: var(--vermelho); color: #fff;           box-shadow: 0 8px 28px rgba(198,42,42,0.5); }
 .feedback-toast.tip { background: var(--amarelo);  color: var(--amar-dk); box-shadow: 0 8px 28px rgba(212,168,0,0.4); }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ================================================
+   MODO VARREDURA
+   ================================================ */
+.scan-select-btn {
+  display: none;
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 10000;
+  min-width: 150px;
+  min-height: 58px;
+  padding: 14px 22px;
+  border-radius: 18px;
+  border: 3px solid var(--roxo);
+  background: var(--verde);
+  color: #fff;
+  font-family: 'Nunito', sans-serif;
+  font-size: calc(16px * var(--font-scale));
+  font-weight: 900;
+  box-shadow: 0 8px 24px rgba(91,183,81,0.45);
+  cursor: pointer;
+}
+body.scan-mode .scan-select-btn {
+  display: block;
+}
+.scan-select-btn:focus {
+  outline: 4px solid var(--amarelo);
+  outline-offset: 4px;
+}
+.scan-active {
+  outline: 5px solid var(--roxo) !important;
+  outline-offset: 5px !important;
+  box-shadow: 0 0 0 9px rgba(249,231,132,0.9), 0 0 22px rgba(174,90,191,0.55) !important;
+  transform: scale(1.08) !important;
+  z-index: 20;
+}
 
 /* ================================================
    PERSONAGEM

@@ -9,9 +9,46 @@
 </head>
 <body>
 
+  <!-- Filtros SVG para simulação de daltonismo (ocultos visualmente) -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+    <defs>
+      <!-- Deuteranopia: dificuldade verde-vermelho -->
+      <filter id="filter-deuteranopia" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" values="
+          0.625 0.375 0     0 0
+          0.7   0.3   0     0 0
+          0     0.3   0.7   0 0
+          0     0     0     1 0"/>
+      </filter>
+      <!-- Protanopia: ausência do vermelho -->
+      <filter id="filter-protanopia" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" values="
+          0.567 0.433 0     0 0
+          0.558 0.442 0     0 0
+          0     0.242 0.758 0 0
+          0     0     0     1 0"/>
+      </filter>
+      <!-- Tritanopia: dificuldade azul-amarelo -->
+      <filter id="filter-tritanopia" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" values="
+          0.95  0.05  0     0 0
+          0     0.433 0.567 0 0
+          0     0.475 0.525 0 0
+          0     0     0     1 0"/>
+      </filter>
+    </defs>
+  </svg>
+
   <a href="#blockList" class="skip-link">Pular para os blocos</a>
 
   <div class="feedback-toast" id="toast" role="alert" aria-live="assertive" aria-atomic="true"></div>
+  <div class="sr-only" id="scanStatus" aria-live="polite" aria-atomic="true"></div>
+  <button id="scanSelectBtn"
+          class="scan-select-btn"
+          onclick="activateScanTarget()"
+          aria-label="Selecionar item destacado pela varredura">
+    Selecionar
+  </button>
 
   <div class="phase-complete-overlay" id="phaseCompleteOverlay" role="dialog" aria-modal="true" aria-labelledby="pcTitle" aria-describedby="pcScoreLine">
     <div class="phase-complete-card">
@@ -47,15 +84,6 @@
     <!-- BARRA DE CONTROLES: dificuldade + áudio + acessibilidade -->
     <div class="top-controls-bar" role="toolbar" aria-label="Controles do jogo">
 
-      <!-- Dificuldade -->
-      <label for="difficultySelect">🎯 Dificuldade:</label>
-      <select id="difficultySelect" class="difficulty-select"
-              aria-label="Selecionar nível de dificuldade"
-              title="Fácil: blocos ordenados e sem penalidade extra | Médio: padrão | Difícil: sem dicas e penalidades maiores">
-      </select>
-
-      <div class="top-controls-sep" aria-hidden="true"></div>
-
       <!-- Controle de áudio -->
       <button id="btnMute" class="btn-icon-ctrl"
               onclick="toggleMute()"
@@ -90,7 +118,16 @@
         </button>
 
         <div id="a11yPanel" class="a11y-panel" role="region" aria-label="Configurações de acessibilidade">
-          <div class="a11y-panel-title">⚙️ Acessibilidade</div>
+          <div class="a11y-panel-header">
+            <button id="btnCloseA11y"
+                    class="a11y-close-btn"
+                    onclick="closeA11yPanel()"
+                    aria-label="Fechar configurações de acessibilidade"
+                    title="Fechar painel">
+              X
+            </button>
+            <div class="a11y-panel-title">⚙️ Acessibilidade</div>
+          </div>
 
           <button id="btnHighContrast"
                   onclick="toggleHighContrast()"
@@ -99,10 +136,24 @@
             🌓 Alto Contraste
           </button>
 
+          <button id="btnColorblind"
+                  onclick="cycleColorblindMode()"
+                  aria-pressed="false"
+                  aria-label="Alternar modo daltônico">
+            👁️ Daltonismo: Desativado
+          </button>
+
           <button id="btnFontSize"
                   onclick="cycleFontSize()"
                   aria-label="Aumentar tamanho de fonte">
             🔤 Texto Normal
+          </button>
+
+          <button id="btnScanMode"
+                  onclick="toggleScanMode()"
+                  aria-pressed="false"
+                  aria-label="Ativar modo varredura para jogar com um toque">
+            🔁 Varredura: Desativada
           </button>
 
           <div class="a11y-shortcuts" aria-label="Atalhos de teclado disponíveis">
@@ -113,6 +164,8 @@
             <b>O</b> — Ouvir sequência<br>
             <b>M</b> — Silenciar áudio<br>
             <b>A</b> — Acessibilidade<br>
+            <b>S</b> — Modo varredura<br>
+            <b>Espaço/Enter</b> — Selecionar varredura<br>
             <b>Esc</b> — Fechar painel
           </div>
         </div>

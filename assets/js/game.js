@@ -172,17 +172,39 @@ function cycleColorblindMode() {
   }
 }
 
-function toggleA11yPanel() {
+function closeA11yPanel(returnFocus = true) {
   const panel = document.getElementById('a11yPanel');
   if (!panel) return;
-  const isOpen = panel.classList.toggle('open');
   const btn = document.getElementById('btnA11y');
-  if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-  if (isOpen) {
-    const firstFocusable = panel.querySelector('button, input, select');
-    if (firstFocusable) firstFocusable.focus();
+  panel.classList.remove('open');
+  if (btn) {
+    btn.setAttribute('aria-expanded', 'false');
+    if (returnFocus) btn.focus();
   }
 }
+
+function toggleA11yPanel(forceOpen) {
+  const panel = document.getElementById('a11yPanel');
+  if (!panel) return;
+  const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !panel.classList.contains('open');
+  const btn = document.getElementById('btnA11y');
+  panel.classList.toggle('open', shouldOpen);
+  if (btn) btn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+  if (shouldOpen) {
+    const firstFocusable = panel.querySelector('button, input, select');
+    if (firstFocusable) firstFocusable.focus();
+  } else if (btn) {
+    btn.focus();
+  }
+}
+
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('a11yPanel');
+  const wrap = document.querySelector('.a11y-panel-wrap');
+  if (panel && panel.classList.contains('open') && wrap && !wrap.contains(e.target)) {
+    closeA11yPanel(false);
+  }
+});
 
 
 // ================================================
@@ -211,9 +233,19 @@ document.addEventListener('keydown', (e) => {
     case 'a': case 'A':
       if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); toggleA11yPanel(); }
       break;
+    case 's': case 'S':
+      if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); toggleScanMode(); }
+      break;
+    case 'Enter':
+    case ' ':
+      if (scanMode && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        activateScanTarget();
+      }
+      break;
     case 'Escape':
       const panel = document.getElementById('a11yPanel');
-      if (panel && panel.classList.contains('open')) { toggleA11yPanel(); }
+      if (panel && panel.classList.contains('open')) { closeA11yPanel(); }
       const overlay = document.getElementById('phaseCompleteOverlay');
       if (overlay && overlay.classList.contains('visible')) { /* sem ação — usuário deve clicar */ }
       break;
@@ -235,12 +267,146 @@ let hintCount      = 0;
 let errorCount     = 0;
 let hadError       = false;
 let phaseStartTime = 0;
+let scanMode       = false;
+let scanTimer      = null;
+let scanIndex      = -1;
+let scanTargets    = [];
 const MAX_STARS_PER_PHASE = 4;
 
 const sayings = {
   correct: ['Incrível! Você acertou! 🎉','Muito bem! Continue assim! 🌟','Que esperto! 🏆','Perfeito! Você arrasou! ✨','Show de bola! 🎊'],
   wrong:   ['Quase! Tenta de novo! 💪','Não foi dessa vez! Você consegue! 🙂','Pense bem... qual vem primeiro? 🤔']
 };
+
+// ================================================
+// MODO VARREDURA — seleção por um toque
+// ================================================
+function isVisible(el) {
+  return !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length));
+}
+
+function getElementActionName(el) {
+  if (!el) return '';
+  return el.getAttribute('aria-label') || el.textContent.trim().replace(/\s+/g, ' ');
+}
+
+function getScanTargets() {
+  const storySkip = document.getElementById('storySkip');
+  if (isVisible(storySkip)) return [storySkip];
+
+  const completeOverlay = document.getElementById('phaseCompleteOverlay');
+  const nextBtn = document.getElementById('pcBtnNext');
+  if (completeOverlay && completeOverlay.classList.contains('visible') && isVisible(nextBtn)) {
+    return [nextBtn];
+  }
+
+  const targets = [
+    ...document.querySelectorAll('#blockList .block-card:not(.used)'),
+    ...document.querySelectorAll('.drop-slot')
+  ].filter(el => {
+    if (!isVisible(el)) return false;
+    if (el.classList.contains('drop-slot')) {
+      const idx = Number(el.dataset.idx);
+      return slots[idx] !== null;
+    }
+    return true;
+  });
+
+  ['.btn-speak-all', '.btn-hint', '.btn-reset'].forEach(selector => {
+    const btn = document.querySelector(selector);
+    if (isVisible(btn) && !btn.disabled) targets.push(btn);
+  });
+
+  const checkBtn = document.querySelector('.btn-check');
+  if (isVisible(checkBtn) && !checkBtn.disabled && !slots.includes(null)) targets.push(checkBtn);
+
+  return targets;
+}
+
+function clearScanHighlight() {
+  document.querySelectorAll('.scan-active').forEach(el => {
+    el.classList.remove('scan-active');
+    el.removeAttribute('aria-current');
+  });
+}
+
+function updateScanButton() {
+  const btn = document.getElementById('btnScanMode');
+  if (btn) {
+    btn.textContent = scanMode ? '🔁 Varredura: Ativada' : '🔁 Varredura: Desativada';
+    btn.setAttribute('aria-pressed', scanMode ? 'true' : 'false');
+    btn.setAttribute('aria-label', scanMode ? 'Desativar modo varredura' : 'Ativar modo varredura para jogar com um toque');
+  }
+  document.body.classList.toggle('scan-mode', scanMode);
+}
+
+function announceScanTarget(el) {
+  const status = document.getElementById('scanStatus');
+  const name = getElementActionName(el);
+  if (status && name) status.textContent = 'Item destacado: ' + name + '. Toque em Selecionar ou pressione Espaço.';
+}
+
+function stepScan() {
+  scanTargets = getScanTargets();
+  clearScanHighlight();
+
+  if (!scanMode || !scanTargets.length) {
+    const status = document.getElementById('scanStatus');
+    if (status) status.textContent = 'Nenhum item disponível para varredura.';
+    return;
+  }
+
+  scanIndex = (scanIndex + 1) % scanTargets.length;
+  const active = scanTargets[scanIndex];
+  active.classList.add('scan-active');
+  active.setAttribute('aria-current', 'true');
+  announceScanTarget(active);
+}
+
+function startScan() {
+  stopScan(false);
+  scanIndex = -1;
+  stepScan();
+  scanTimer = setInterval(stepScan, 1600);
+}
+
+function stopScan(clearMode = true) {
+  if (scanTimer) clearInterval(scanTimer);
+  scanTimer = null;
+  scanIndex = -1;
+  clearScanHighlight();
+  if (clearMode) {
+    scanMode = false;
+    updateScanButton();
+  }
+}
+
+function refreshScanTargets() {
+  if (!scanMode) return;
+  startScan();
+}
+
+function toggleScanMode(forceOn) {
+  scanMode = typeof forceOn === 'boolean' ? forceOn : !scanMode;
+  updateScanButton();
+  if (scanMode) {
+    closeA11yPanel(false);
+    showToast('🔁 Modo varredura ativado. Toque em Selecionar quando o item desejado estiver destacado.', 'tip');
+    say('Modo varredura ativado. Toque em selecionar quando o item desejado estiver destacado.', 0.85);
+    startScan();
+  } else {
+    stopScan();
+    showToast('Modo varredura desativado.', 'ok');
+  }
+}
+
+function activateScanTarget() {
+  if (!scanMode) return;
+  const target = scanTargets[scanIndex];
+  if (!target) return;
+  target.click();
+  refreshScanTargets();
+}
 
 function getCurrentSubphase() {
   return phases[currentPhase].subphases[currentSubphase];
@@ -754,6 +920,7 @@ function initPhase() {
   setChar('Vamos lá!');
   resetCharImage();
   applyDifficulty();
+  refreshScanTargets();
   setTimeout(() => speakMission(), 500);
 }
 
@@ -780,14 +947,14 @@ function buildBlocks() {
     c.addEventListener('click', () => {
       say(b.name, 1.0);
       const next = slots.findIndex(s => s === null);
-      if (next !== -1) addToSlot(next, b.id);
+      if (next !== -1) addToSlot(next, b.id, { moveFocus: true });
       else showToast('⚠️ Todos os espaços estão preenchidos!', 'err');
     });
     c.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         const next = slots.findIndex(s => s === null);
-        if (next !== -1) { say(b.name, 1.0); addToSlot(next, b.id); }
+        if (next !== -1) { say(b.name, 1.0); addToSlot(next, b.id, { moveFocus: true }); }
         else showToast('⚠️ Todos os espaços estão preenchidos!', 'err');
       }
     });
@@ -816,10 +983,10 @@ function buildSlots() {
     s.addEventListener('dragover',  e => { e.preventDefault(); s.classList.add('over'); });
     s.addEventListener('dragleave', () => s.classList.remove('over'));
     s.addEventListener('drop', e => { e.preventDefault(); s.classList.remove('over'); if (dragItem) addToSlot(i, dragItem); });
-    s.addEventListener('click', () => { if (slots[i]) removeFromSlot(i); });
+    s.addEventListener('click', () => { if (slots[i]) removeFromSlot(i, { returnFocus: true }); });
     s.addEventListener('keydown', (e) => {
-      if ((e.key === 'Enter' || e.key === ' ') && slots[i]) { e.preventDefault(); removeFromSlot(i); }
-      if ((e.key === 'Delete' || e.key === 'Backspace') && slots[i]) { e.preventDefault(); removeFromSlot(i); }
+      if ((e.key === 'Enter' || e.key === ' ') && slots[i]) { e.preventDefault(); removeFromSlot(i, { returnFocus: true }); }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && slots[i]) { e.preventDefault(); removeFromSlot(i, { returnFocus: true }); }
     });
     zone.appendChild(s);
   });
@@ -828,10 +995,21 @@ function buildSlots() {
 // ================================================
 // ADICIONAR / REMOVER BLOCO
 // ================================================
-function addToSlot(idx, blockId) {
+function focusNextPlayTarget(blockId) {
+  const availableBlocks = [...document.querySelectorAll('#blockList .block-card:not(.used)')];
+  const nextBlock = availableBlocks.find(el => el.id !== 'blk_' + blockId) || availableBlocks[0];
+  if (nextBlock) {
+    nextBlock.focus();
+    return;
+  }
+  const checkBtn = document.querySelector('.btn-check');
+  if (checkBtn) checkBtn.focus();
+}
+
+function addToSlot(idx, blockId, options = {}) {
   const sub = getCurrentSubphase();
-  if (slots[idx] !== null) removeFromSlot(idx);
-  if (slots.includes(blockId)) removeFromSlot(slots.indexOf(blockId));
+  if (slots[idx] !== null) removeFromSlot(idx, { returnFocus: false });
+  if (slots.includes(blockId)) removeFromSlot(slots.indexOf(blockId), { returnFocus: false });
   slots[idx] = blockId;
   const b = sub.blocks.find(x => x.id === blockId);
   document.getElementById('sc' + idx).innerHTML = renderSlotContent(b);
@@ -847,9 +1025,11 @@ function addToSlot(idx, blockId) {
   say(b.name, 1.0);
   updateProgress();
   dragItem = null;
+  if (options.moveFocus) focusNextPlayTarget(blockId);
+  refreshScanTargets();
 }
 
-function removeFromSlot(idx) {
+function removeFromSlot(idx, options = {}) {
   const sub     = getCurrentSubphase();
   const blockId = slots[idx];
   if (!blockId) return;
@@ -867,8 +1047,10 @@ function removeFromSlot(idx) {
     blkEl.setAttribute('aria-label', b.name + ' — clique ou pressione Enter para adicionar à sequência');
     blkEl.setAttribute('aria-pressed', 'false');
     blkEl.setAttribute('tabindex', '0');
+    if (options.returnFocus) blkEl.focus();
   }
   updateProgress();
+  refreshScanTargets();
 }
 
 function updateProgress() {
