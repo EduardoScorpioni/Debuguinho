@@ -42,6 +42,7 @@
   <a href="#blockList" class="skip-link">Pular para os blocos</a>
 
   <div class="feedback-toast" id="toast" role="alert" aria-live="assertive" aria-atomic="true"></div>
+  <div class="sr-only" id="colorblindStatus" aria-live="polite" aria-atomic="true"></div>
   <div class="sr-only" id="scanStatus" aria-live="polite" aria-atomic="true"></div>
   <button id="scanSelectBtn"
           class="scan-select-btn"
@@ -139,7 +140,8 @@
           <button id="btnColorblind"
                   onclick="cycleColorblindMode()"
                   aria-pressed="false"
-                  aria-label="Alternar modo daltônico">
+                  aria-label="Alternar modo daltônico"
+                  aria-keyshortcuts="C">
             👁️ Daltonismo: Desativado
           </button>
 
@@ -164,6 +166,7 @@
             <b>O</b> — Ouvir sequência<br>
             <b>M</b> — Silenciar áudio<br>
             <b>A</b> — Acessibilidade<br>
+            <b>C</b> — Modo daltônico<br>
             <b>S</b> — Modo varredura<br>
             <b>Espaço/Enter</b> — Selecionar varredura<br>
             <b>Esc</b> — Fechar painel

@@ -144,32 +144,60 @@ function cycleFontSize() {
 let colorblindMode = 'none'; // 'none' | 'deuteranopia' | 'protanopia' | 'tritanopia'
 
 const colorblindModes = {
-  none:         { label: '👁️ Daltonismo: Desativado', className: '' },
-  deuteranopia: { label: '🟡 Deuteranopia (Verde-Vermelho)', className: 'cb-deuteranopia' },
-  protanopia:   { label: '🔵 Protanopia (Vermelho)', className: 'cb-protanopia' },
-  tritanopia:   { label: '🟣 Tritanopia (Azul-Amarelo)', className: 'cb-tritanopia' }
+  none: {
+    label: '👁️ Daltonismo: Desativado',
+    shortLabel: 'desativado',
+    className: ''
+  },
+  deuteranopia: {
+    label: '🟡 Daltonismo: Deuteranopia',
+    shortLabel: 'deuteranopia, dificuldade verde e vermelho',
+    className: 'cb-deuteranopia'
+  },
+  protanopia: {
+    label: '🔵 Daltonismo: Protanopia',
+    shortLabel: 'protanopia, baixa percepção do vermelho',
+    className: 'cb-protanopia'
+  },
+  tritanopia: {
+    label: '🟣 Daltonismo: Tritanopia',
+    shortLabel: 'tritanopia, dificuldade azul e amarelo',
+    className: 'cb-tritanopia'
+  }
 };
+
+function applyColorblindMode(mode = colorblindMode) {
+  const nextMode = colorblindModes[mode] ? mode : 'none';
+  Object.values(colorblindModes).forEach(({ className }) => {
+    if (className) document.body.classList.remove(className);
+  });
+
+  colorblindMode = nextMode;
+  const active = colorblindModes[colorblindMode];
+  if (active.className) document.body.classList.add(active.className);
+  document.body.classList.toggle('colorblind-active', colorblindMode !== 'none');
+
+  const btn = document.getElementById('btnColorblind');
+  if (btn) {
+    btn.textContent = active.label;
+    btn.setAttribute('aria-label', 'Modo daltônico: ' + active.shortLabel + '. Pressione para alternar.');
+    btn.setAttribute('aria-pressed', colorblindMode !== 'none' ? 'true' : 'false');
+    btn.title = 'Modo daltônico (C): ' + active.shortLabel;
+  }
+
+  const status = document.getElementById('colorblindStatus');
+  if (status) {
+    const msg = colorblindMode === 'none'
+      ? 'Modo daltônico desativado.'
+      : 'Modo daltônico ativado para ' + active.shortLabel + '. Acertos e erros também usam símbolos e contornos.';
+    status.textContent = msg;
+  }
+}
 
 function cycleColorblindMode() {
   const keys = Object.keys(colorblindModes);
   const next = keys[(keys.indexOf(colorblindMode) + 1) % keys.length];
-
-  // Remove classe anterior
-  if (colorblindModes[colorblindMode].className)
-    document.body.classList.remove(colorblindModes[colorblindMode].className);
-
-  colorblindMode = next;
-
-  // Aplica nova classe
-  if (colorblindModes[colorblindMode].className)
-    document.body.classList.add(colorblindModes[colorblindMode].className);
-
-  const btn = document.getElementById('btnColorblind');
-  if (btn) {
-    btn.textContent = colorblindModes[colorblindMode].label;
-    btn.setAttribute('aria-label', 'Modo daltônico: ' + colorblindModes[colorblindMode].label);
-    btn.setAttribute('aria-pressed', colorblindMode !== 'none' ? 'true' : 'false');
-  }
+  applyColorblindMode(next);
 }
 
 function closeA11yPanel(returnFocus = true) {
@@ -232,6 +260,9 @@ document.addEventListener('keydown', (e) => {
       break;
     case 'a': case 'A':
       if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); toggleA11yPanel(); }
+      break;
+    case 'c': case 'C':
+      if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); cycleColorblindMode(); }
       break;
     case 's': case 'S':
       if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); toggleScanMode(); }

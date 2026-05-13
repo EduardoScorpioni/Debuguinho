@@ -86,29 +86,82 @@ body.high-contrast .btn-speak-all { background: #003566; color: #fff; }
 
 /* ================================================
    MODOS DALTÔNICOS
-   Cada modo aplica um filtro SVG via CSS filter que simula
-   a visão do usuário, tornando os elementos mais distinguíveis.
+   Paletas e sinais não dependentes apenas de cor.
    ================================================ */
-
-/* Deuteranopia — dificuldade para distinguir verde e vermelho */
 body.cb-deuteranopia {
-  filter: url('#filter-deuteranopia');
+  --verde:    #0072B2;
+  --verde-lt: #B9DCF1;
+  --vermelho: #D55E00;
+  --verm-lt:  #F4C2A1;
+  --amarelo:  #F0E442;
+  --amar-dk:  #8A7600;
+  --azul:     #56B4E9;
+  --azul-dk:  #006C9A;
 }
 
-/* Protanopia — ausência de percepção do vermelho */
 body.cb-protanopia {
-  filter: url('#filter-protanopia');
+  --verde:    #009E73;
+  --verde-lt: #BEE8D8;
+  --vermelho: #0072B2;
+  --verm-lt:  #B9DCF1;
+  --amarelo:  #F0E442;
+  --amar-dk:  #8A7600;
+  --azul:     #56B4E9;
+  --azul-dk:  #005F8C;
 }
 
-/* Tritanopia — dificuldade para distinguir azul e amarelo */
 body.cb-tritanopia {
-  filter: url('#filter-tritanopia');
+  --verde:    #009E73;
+  --verde-lt: #BEE8D8;
+  --vermelho: #CC79A7;
+  --verm-lt:  #F1C4DD;
+  --amarelo:  #E69F00;
+  --amar-dk:  #8A5A00;
+  --azul:     #0072B2;
+  --azul-dk:  #004B75;
 }
 
-/* Filtros SVG embutidos — injetados no body via JS abaixo
-   (ver final do style.css — SVG inline no HTML) */
+body.colorblind-active .block-card,
+body.colorblind-active .drop-slot,
+body.colorblind-active .btn-action {
+  border-width: 4px;
+}
 
-/* Indicador visual no botão quando modo ativo */
+body.colorblind-active .drop-slot.correct {
+  background:
+    repeating-linear-gradient(45deg, rgba(0,0,0,0.08) 0 6px, transparent 6px 12px),
+    rgba(91,183,81,0.2);
+}
+
+body.colorblind-active .drop-slot.wrong {
+  background:
+    repeating-linear-gradient(135deg, rgba(0,0,0,0.12) 0 5px, transparent 5px 10px),
+    rgba(198,42,42,0.14);
+}
+
+body.colorblind-active .drop-slot.correct::after,
+body.colorblind-active .drop-slot.wrong::after {
+  position: absolute;
+  right: 7px;
+  bottom: 6px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: calc(10px * var(--font-scale));
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0;
+}
+
+body.colorblind-active .drop-slot.correct::after {
+  content: "CERTO";
+  background: var(--verde);
+}
+
+body.colorblind-active .drop-slot.wrong::after {
+  content: "ERRO";
+  background: var(--vermelho);
+}
+
 #btnColorblind[aria-pressed="true"] {
   background: var(--azul);
   color: var(--azul-dk);
