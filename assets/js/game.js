@@ -120,7 +120,8 @@ function toggleHighContrast() {
   const btn = document.getElementById('btnHighContrast');
   if (btn) {
     btn.setAttribute('aria-pressed', highContrast ? 'true' : 'false');
-    btn.textContent = highContrast ? '🌑 Alto Contraste ON' : '🌓 Alto Contraste';
+    btn.textContent = highContrast ? '🌑 Alto Contraste Preto/Amarelo' : '🌓 Alto Contraste';
+    btn.setAttribute('aria-label', highContrast ? 'Desativar alto contraste preto e amarelo' : 'Ativar alto contraste preto e amarelo');
   }
 }
 
