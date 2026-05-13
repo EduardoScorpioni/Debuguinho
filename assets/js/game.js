@@ -820,9 +820,15 @@ function speakMission() {
 function speakSequence() {
   const sub    = getCurrentSubphase();
   const filled = slots.filter(s => s !== null);
-  if (!filled.length) { say('Adicione os blocos primeiro!'); return; }
+  if (!filled.length) {
+    announceGameStatus('A sequência ainda está vazia. Adicione pelo menos um bloco antes de ouvir.');
+    say('Adicione os blocos primeiro!');
+    return;
+  }
   const names = slots.map((s, i) => s ? `${i + 1}. ${sub.blocks.find(b => b.id === s).name}` : '').filter(Boolean);
-  say('A sequência até agora é: ' + names.join(', '), 0.8);
+  const msg = 'A sequência até agora é: ' + names.join(', ');
+  announceGameStatus(msg);
+  say(msg, 0.8);
 }
 
 // ================================================
@@ -889,6 +895,11 @@ function showToast(msg, type = 'ok') {
   setTimeout(() => { t.className = 'feedback-toast'; }, 2600);
 }
 
+function announceGameStatus(msg) {
+  const status = document.getElementById('gameStatus');
+  if (status) status.textContent = msg;
+}
+
 function setChar(msg) {
   const el = document.getElementById('charSpeech');
   if (el) el.textContent = msg;
@@ -953,6 +964,7 @@ function initPhase() {
   resetCharImage();
   applyDifficulty();
   refreshScanTargets();
+  announceGameStatus(`Fase ${ph.id}, ${ph.title}, dificuldade ${ph.difficulty}. Subfase ${sub.id}: ${sub.title}. ${sub.mission}`);
   setTimeout(() => speakMission(), 500);
 }
 
@@ -968,10 +980,11 @@ function buildBlocks() {
     c.className = 'block-card' + (b.img ? ' has-img' : '');
     c.id        = 'blk_' + b.id;
     c.draggable = true;
-    c.setAttribute('role', 'listitem');
+    c.setAttribute('role', 'button');
     c.setAttribute('tabindex', '0');
-    c.setAttribute('aria-label', b.name + ' — clique ou pressione Enter para adicionar à sequência');
+    c.setAttribute('aria-label', b.name + '. Bloco disponível. Pressione Enter ou Espaço para adicionar na próxima posição vazia.');
     c.setAttribute('aria-pressed', 'false');
+    c.setAttribute('aria-describedby', 'gameInstructions');
     c.innerHTML = renderBlockContent(b);
 
     c.addEventListener('dragstart', () => { dragItem = b.id; c.classList.add('dragging'); });
@@ -1005,9 +1018,10 @@ function buildSlots() {
     const s = document.createElement('div');
     s.className   = 'drop-slot';
     s.dataset.idx = i;
-    s.setAttribute('role', 'listitem');
-    s.setAttribute('tabindex', '0');
-    s.setAttribute('aria-label', `Posição ${i + 1} de ${sub.sequence.length}, vazio`);
+    s.setAttribute('role', 'group');
+    s.setAttribute('tabindex', '-1');
+    s.setAttribute('aria-label', `Posição ${i + 1} de ${sub.sequence.length}, vazia`);
+    s.setAttribute('aria-describedby', 'gameInstructions');
     s.innerHTML = `
       <span class="slot-number" aria-hidden="true">${i + 1}</span>
       <div class="slot-content" id="sc${i}"><span style="font-size:26px;color:#ccc" aria-hidden="true">?</span></div>
@@ -1048,14 +1062,20 @@ function addToSlot(idx, blockId, options = {}) {
   const blkEl = document.getElementById('blk_' + blockId);
   if (blkEl) {
     blkEl.classList.add('used');
-    blkEl.setAttribute('aria-label', b.name + ' — já adicionado à sequência');
+    blkEl.setAttribute('aria-label', b.name + '. Bloco já adicionado à sequência.');
     blkEl.setAttribute('aria-pressed', 'true');
     blkEl.setAttribute('tabindex', '-1');
   }
   const slotEl = document.querySelector(`.drop-slot[data-idx="${idx}"]`);
-  if (slotEl) slotEl.setAttribute('aria-label', `Posição ${idx + 1} de ${sub.sequence.length}: ${b.name} — pressione Enter para remover`);
+  if (slotEl) {
+    slotEl.setAttribute('tabindex', '0');
+    slotEl.setAttribute('role', 'button');
+    slotEl.setAttribute('aria-label', `Posição ${idx + 1} de ${sub.sequence.length}: ${b.name}. Pressione Enter, Espaço, Delete ou Backspace para remover.`);
+  }
   say(b.name, 1.0);
   updateProgress();
+  const filledCount = slots.filter(s => s !== null).length;
+  announceGameStatus(`${b.name} adicionado na posição ${idx + 1}. ${filledCount} de ${slots.length} posições preenchidas.`);
   dragItem = null;
   if (options.moveFocus) focusNextPlayTarget(blockId);
   refreshScanTargets();
@@ -1071,17 +1091,20 @@ function removeFromSlot(idx, options = {}) {
   const slotEl = document.querySelector(`.drop-slot[data-idx="${idx}"]`);
   if (slotEl) {
     slotEl.className = 'drop-slot';
-    slotEl.setAttribute('aria-label', `Posição ${idx + 1} de ${sub.sequence.length}, vazio`);
+    slotEl.setAttribute('role', 'group');
+    slotEl.setAttribute('tabindex', '-1');
+    slotEl.setAttribute('aria-label', `Posição ${idx + 1} de ${sub.sequence.length}, vazia`);
   }
   const blkEl = document.getElementById('blk_' + blockId);
   if (blkEl) {
     blkEl.classList.remove('used');
-    blkEl.setAttribute('aria-label', b.name + ' — clique ou pressione Enter para adicionar à sequência');
+    blkEl.setAttribute('aria-label', b.name + '. Bloco disponível. Pressione Enter ou Espaço para adicionar na próxima posição vazia.');
     blkEl.setAttribute('aria-pressed', 'false');
     blkEl.setAttribute('tabindex', '0');
     if (options.returnFocus) blkEl.focus();
   }
   updateProgress();
+  announceGameStatus(`${b.name} removido da posição ${idx + 1}.`);
   refreshScanTargets();
 }
 
@@ -1103,6 +1126,7 @@ function checkAnswer() {
   const sub = getCurrentSubphase();
   if (slots.includes(null)) {
     showToast('⚠️ Complete a sequência antes!', 'err');
+    announceGameStatus('Sequência incompleta. Complete todos os espaços antes de verificar.');
     say('Complete todos os espaços primeiro!');
     return;
   }
@@ -1128,6 +1152,7 @@ function checkAnswer() {
 
     const msg = sayings.correct[Math.floor(Math.random() * sayings.correct.length)];
     setChar(msg);
+    announceGameStatus(`Sequência correta. Pontuação desta subfase: ${result.pts} de 100 pontos.`);
 
     // Feedback por imagem: perfeito (sem erro) = muito bom; com erro = bom
     setCharFeedbackImage(hadError ? 'good' : 'great');
@@ -1155,6 +1180,7 @@ function checkAnswer() {
     else if (wrongCount / sub.sequence.length > 0.75) penaltyMsg = ' (⚠️ Sequência bagunçada: penalidade ao final)';
     const msg = sayings.wrong[Math.floor(Math.random() * sayings.wrong.length)];
     showToast('❌ ' + msg + penaltyMsg, 'err');
+    announceGameStatus(`Sequência incorreta. ${wrongCount} ${wrongCount === 1 ? 'posição está fora da ordem' : 'posições estão fora da ordem'}. Tente novamente ou peça uma dica.`);
     setChar(msg);
     // Feedback por imagem: erro = neutro (personagem pensativo)
     setCharFeedbackImage('neutral');
@@ -1175,6 +1201,7 @@ function showHint() {
   const hint = `Na posição ${wrongIdx + 1}, vai o bloco: ${correct.name}`;
   say(hint, 0.85);
   showToast('💡 ' + hint, 'tip');
+  announceGameStatus('Dica: ' + hint);
   setChar(correct.name + ' ' + correct.icon);
 }
 

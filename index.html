@@ -51,7 +51,7 @@
     Selecionar
   </button>
 
-  <div class="phase-complete-overlay" id="phaseCompleteOverlay" role="dialog" aria-modal="true" aria-labelledby="pcTitle" aria-describedby="pcScoreLine">
+  <div class="phase-complete-overlay" id="phaseCompleteOverlay" role="dialog" aria-modal="true" aria-labelledby="pcTitle" aria-describedby="pcScoreLine pcDetails">
     <div class="phase-complete-card">
       <div class="pc-phase-icon" id="pcPhaseIcon">🌅</div>
       <h2 class="pc-title" id="pcTitle">Fase Concluída!</h2>
@@ -180,7 +180,11 @@
     <nav class="phase-nav" id="phaseNav" role="navigation" aria-label="Navegação de fases"></nav>
 
     <!-- JOGO -->
-    <main class="game-area" role="main">
+    <main class="game-area" role="main" aria-describedby="gameInstructions">
+      <p class="sr-only" id="gameInstructions">
+        Como jogar com leitor de tela: navegue até os blocos disponíveis. Pressione Enter ou Espaço em um bloco para adicionar na próxima posição vazia da sequência. Quando um espaço estiver preenchido, ele ficará disponível para foco; pressione Enter, Espaço, Delete ou Backspace para remover esse bloco. Use o botão Verificar para conferir a sequência. Use o botão Ouvir missão para escutar o objetivo atual.
+      </p>
+      <div class="sr-only" id="gameStatus" aria-live="polite" aria-atomic="true"></div>
 
       <!-- Painel esquerdo: botões de ação -->
       <div class="left-panel actions-panel" role="complementary" aria-label="Controles do jogo">
@@ -242,8 +246,9 @@
 
         <div class="seq-title" aria-hidden="true">📋 Monte a sequência:</div>
         <div class="drop-zone" id="dropZone"
-             role="list"
-             aria-label="Sequência de atividades — arraste ou clique nos blocos para preencher">
+             role="group"
+             aria-label="Sequência montada"
+             aria-describedby="gameInstructions">
         </div>
       </section>
 
@@ -252,7 +257,7 @@
     <!-- PAINEL INFERIOR: blocos -->
     <section class="bottom-blocks-panel" aria-label="Blocos disponíveis">
       <div class="panel-title" aria-hidden="true">🎴 Blocos</div>
-      <div id="blockList" role="list" aria-label="Blocos para montar a sequência"></div>
+      <div id="blockList" role="group" aria-label="Blocos disponíveis para montar a sequência" aria-describedby="gameInstructions"></div>
     </section>
 
   </div>
